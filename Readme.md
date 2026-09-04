@@ -201,3 +201,33 @@ CREATE INDEX "ix_refreshtokens_expiresat" ON public."RefreshTokens"("ExpiresAt")
 
 ![Окно схемы БД "TaskFlow"](screenshots/Dbeaver-Schema-Tables.png)
 
+
+## 🔐 Шаг 5: Создание тестового пользователя (Admin)
+
+Для удобства тестирования JWT-аутентификации создадим тестового администратора. Мы используем алгоритм **PBKDF2**, встроенный в .NET, чтобы избежать лишних зависимостей.
+
+1. Откройте SQL Editor в DBeaver.
+2. Выполните скрипт для создания пользователя:
+
+```sql
+-- Создаем тестового пользователя admin
+-- Пароль: Admin123 
+-- Формат хеша: итерации:base64_соль:base64_хеш (PBKDF2-HMAC-SHA256, 100k итераций)
+INSERT INTO public."Users" ("Username", "Email", "PasswordHash")
+VALUES (
+    'admin',
+    'admin@taskflow.local',
+    '100000:NDQyY34PFV8T9l5WOcItfQ==:POxpZySDaIgiYHCy8qtVUZnUZeEFAT26H3VWtkJpwYU='
+);
+
+-- Проверяем результат
+SELECT "Id", "Username", "Email", "CreatedAt" 
+FROM public."Users" 
+WHERE "Username" = 'admin';
+```
+![Окно схемы БД "TaskFlow"](screenshots/Dbeaver-Admin-Created.png)
+
+>💡 Почему такой формат хеша?
+Мы не используем сторонние пакеты (как BCrypt), а берем встроенный в .NET Rfc2898DeriveBytes (PBKDF2).
+Формат 100000:salt:hash позволяет нам хранить все необходимые параметры для проверки пароля в одной строке БД.
+Позже мы напишем класс PasswordHasher в слое Infrastructure, который будет генерировать и проверять такие строки.

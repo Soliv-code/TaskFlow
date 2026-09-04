@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/screenshots/">
+    <File Path="screenshots/Dbeaver-Admin-Created.png" />
     <File Path="screenshots/dbeaver-connection-settings.png" />
     <File Path="screenshots/dbeaver-New-Connection-PostgreSQL.png" />
     <File Path="screenshots/dbeaver-New-Connection.png" />
