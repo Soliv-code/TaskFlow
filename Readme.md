@@ -11,7 +11,7 @@
 
   
 
-1. Скачайте и установите [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) (windows).
+1. Скачайте и установите [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) (Docker Desktop for Windows - x86_64).
 
 2. Перезагрузите компьютер после установки.
 
