@@ -160,3 +160,41 @@ docker ps
 1. Откройте **DBeaver**, подключитесь к базе данных `TaskFlow` (порт `5433`).
 2. Создайте новый SQL-скрипт (`Ctrl + ]` или правая кнопка мыши по соединению → SQL Editor → New SQL Script).
 3. Выполните следующий скрипт для создания таблиц пользователей и токенов:
+
+```sql
+-- 1. Таблица пользователей
+CREATE TABLE public."Users" (
+    "Id" SERIAL PRIMARY KEY,
+    "Username" VARCHAR(50) NOT NULL UNIQUE,
+    "Email" VARCHAR(100) NOT NULL UNIQUE,
+    "PasswordHash" VARCHAR(255) NOT NULL,
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Таблица Refresh Tokens
+CREATE TABLE public."RefreshTokens" (
+    "Id" SERIAL PRIMARY KEY,
+    "UserId" INT NOT NULL,
+    "Token" VARCHAR(255) NOT NULL UNIQUE,
+    "ExpiresAt" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "IsRevoked" BOOLEAN NOT NULL DEFAULT false,
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Внешний ключ с каскадным удалением
+    CONSTRAINT "FK_RefreshTokens_Users_UserId" 
+        FOREIGN KEY ("UserId") 
+        REFERENCES public."Users"("Id") 
+        ON DELETE CASCADE
+);
+
+-- 3. Индексы для производительности
+CREATE INDEX "ix_refreshtokens_token" ON public."RefreshTokens"("Token");
+CREATE INDEX "ix_refreshtokens_userid" ON public."RefreshTokens"("UserId");
+CREATE INDEX "ix_refreshtokens_expiresat" ON public."RefreshTokens"("ExpiresAt");
+```
+4. После выполнения нажмите кнопку Refresh (F5) в навигаторе баз данных.
+5. Убедитесь, что в схеме public появились таблицы Users и RefreshTokens.
+
+![Окно схемы БД "TaskFlow"](screenshots/Dbeaver-Schema-Tables.png)
+
