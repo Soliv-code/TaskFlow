@@ -125,7 +125,7 @@ docker ps
 
 1. Скачайте DBeaver Community с официального сайта [DBeaver Community](https://dbeaver.io/download/) (Download EXE).
 
-![Окно "Скачивания DBeaver Community"](screenshots/download-dbeaver-Community.png)
+![Окно "Скачивания DBeaver Community"](screenshots/Download-Dbeaver-Community.png)
 
 2. Установите программу и перезагрузите компьютер (если потребуется).
 
