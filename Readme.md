@@ -45,7 +45,7 @@ docker pull postgres:16-alpine
 docker images
 
 ```
-
+![Результат команды docker ps](screenshots/docker-images.png)
   
 
 > 💡 Почему именно версия alpine?
@@ -92,7 +92,7 @@ docker ps
 
   
 
-(Замените этот текст на реальное изображение, например: ![docker ps](screenshots/docker-ps.png))
+![Результат команды docker ps](screenshots/docker-ps.png)
 
   
   
@@ -115,7 +115,7 @@ docker ps
 
 7. Найдите блок Защита потока управления (CFG) и снимите галочку ✔ с главного пункта "Переопределить системные параметры".
 
-**(screenshot)**
+![Окно "Защита от эксплойтов" в настройках Windows ps](screenshots/exploit-protection.png)
 
 8. Сохраните изменения и запустите Docker Desktop заново.
 
@@ -129,7 +129,7 @@ docker ps
 
 3. Запустите DBeaver. На верхней панели выберите: База данных → Новое соединение (или нажмите Ctrl + Shift + N).
 
-![...](!screenshot)![...]
+![Окно создания нового соединения в DBeaver](screenshots/dbeaver-New-Connection.png)
 
 4. В открывшемся окне выберите PostgreSQL и нажмите [Далее].
 
@@ -140,8 +140,8 @@ docker ps
 > * **Имя пользователя (Username):** postgres
 > * **Пароль (Password):** StrongP@ssw0rdHere
 
-![...](!screenshot)![...]
+![Окно с заполненными полями](screenshots/dbeaver-connection-settings.png)
 
 6. Нажмите кнопку **[Тест соединения]**. Вы должны получить сообщение об успешном подключении:
 
-![...](!screenshot)![...]
+![Окно с заполненными полями](screenshots/dbeaver-success.png)
