@@ -1,4 +1,14 @@
 <Solution>
+  <Folder Name="/screenshots/">
+    <File Path="screenshots/dbeaver-connection-settings.png" />
+    <File Path="screenshots/dbeaver-New-Connection-PostgreSQL.png" />
+    <File Path="screenshots/dbeaver-New-Connection.png" />
+    <File Path="screenshots/dbeaver-success.png" />
+    <File Path="screenshots/docker-images.png" />
+    <File Path="screenshots/docker-ps.png" />
+    <File Path="screenshots/Download-Dbeaver-Community.png" />
+    <File Path="screenshots/exploit-protection.png" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path="Readme.md" />
   </Folder>

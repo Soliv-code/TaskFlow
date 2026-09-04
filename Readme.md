@@ -123,7 +123,9 @@ docker ps
 
 ## 💻 Шаг 3: Установка и настройка DBeaver
 
-1. Скачайте DBeaver Community с официального сайта.
+1. Скачайте DBeaver Community с официального сайта [DBeaver Community](https://dbeaver.io/download/) (Download EXE).
+
+![Окно скачивания DBeaver Community](screenshots/download-dbeaver-Community.png)
 
 2. Установите программу и перезагрузите компьютер (если потребуется).
 
@@ -147,3 +149,14 @@ docker ps
 6. Нажмите кнопку **[Test Connection...]**. Вы должны получить сообщение об успешном подключении:
 
 ![Окно с заполненными полями](screenshots/dbeaver-success.png)
+
+  
+
+
+## 🗄️ Шаг 4: Создание схемы базы данных (Database First)
+
+Поскольку мы используем подход **Database First**, сначала мы создаем структуру таблиц в PostgreSQL, а затем сгенерируем C#-классы с помощью EF Core.
+
+1. Откройте **DBeaver**, подключитесь к базе данных `TaskFlow` (порт `5433`).
+2. Создайте новый SQL-скрипт (`Ctrl + ]` или правая кнопка мыши по соединению → SQL Editor → New SQL Script).
+3. Выполните следующий скрипт для создания таблиц пользователей и токенов:
