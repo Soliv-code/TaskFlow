@@ -280,3 +280,32 @@ Install-Package Microsoft.EntityFrameworkCore.Tools
 > * **Domain и Application**: Остаются абсолютно чистыми! Мы не тянем зависимости от EF Core в ядро проекта.
 
 4.  После установки нажмите **Сборка** → **Пересобрать решение** (Rebuild Solution), чтобы убедиться, что все пакеты корректно интегрировались и конфликтов версий нет (`Build: 4 succeeded, 0 failed`).
+
+---
+
+##  Шаг 8: Генерация кода из БД (Database First)
+
+Теперь, когда пакеты установлены, мы используем Entity Framework Core для автоматической генерации C#-классов на основе нашей схемы PostgreSQL.
+
+1. Откройте **Консоль диспетчера пакетов** (Средства → Диспетчер пакетов NuGet → Консоль диспетчера пакетов).
+2. В выпадающем списке **Проект по умолчанию** выберите **TaskFlow.Infrastructure**.
+3. Выполните следующую команду:
+
+```powershell
+Scaffold-DbContext "Host=localhost;Port=5433;Database=TaskFlow;Username=postgres;Password=StrongP@ssw0rdHere" Npgsql.EntityFrameworkCore.PostgreSQL -OutputDir Entities -Context AppDbContext -Project TaskFlow.Infrastructure -StartupProject TaskFlow.WebAPI -Force
+```
+
+**Разбор параметров команды:**
+> -   `Host=...` — строка подключения к нашему Docker-контейнеру.
+> -   `-OutputDir Entities` — указывает папку для генерации сущностей.
+> -   `-Context AppDbContext` — задает имя для главного класса контекста базы данных.
+> -   `-Project TaskFlow.Infrastructure` — проект, куда будут добавлены файлы.
+> -   `-StartupProject TaskFlow.WebAPI` — проект запуска (нужен EF Core для чтения конфигураций).
+> -   `-Force` — разрешает перезапись файлов при повторном запуске.
+
+4.  После выполнения в проекте **TaskFlow.Infrastructure** появится папка `Entities` с файлами:
+    -   `AppDbContext.cs`
+    -   `User.cs`
+    -   `RefreshToken.cs`
+
+> ⚠️ **Важное примечание по Clean Architecture:** По умолчанию EF Core генерирует всё в указанный проект. Однако по правилам Clean Architecture, сущности (**`User`**, **`RefreshToken`**) должны находиться в слое **`Domain`**, а **`AppDbContext`** — в **`Infrastructure`**. На следующем шаге мы проведем рефакторинг и разнесем эти файлы по правильным слоям.
