@@ -44,7 +44,7 @@ docker pull postgres:16-alpine
 docker images
 
 ```
-![Результат команды docker ps](screenshots/docker-images.png)
+![Результат команды docker ps](Docs/screenshots/docker-images.png)
   
 
 > 💡 Почему именно версия alpine?
@@ -87,7 +87,7 @@ docker ps
 
   
 
-![Результат команды docker ps](screenshots/docker-ps.png)
+![Результат команды docker ps](Docs/screenshots/docker-ps.png)
 
   
   
@@ -110,7 +110,7 @@ docker ps
 
 7. Найдите блок `Защита потока управления (CFG)` и снимите галочку ✔ с главного пункта "Переопределить системные параметры".
 
-![Окно "Защита от эксплойтов" в настройках Windows ps](screenshots/exploit-protection.png)
+![Окно "Защита от эксплойтов" в настройках Windows ps](Docs/screenshots/exploit-protection.png)
 
 8. Сохраните изменения и запустите Docker Desktop заново.
 
@@ -120,17 +120,17 @@ docker ps
 
 1. Скачайте DBeaver Community с официального сайта [DBeaver Community](https://dbeaver.io/download/) (Download EXE).
 
-![Окно "Скачивания DBeaver Community"](screenshots/Download-Dbeaver-Community.png)
+![Окно "Скачивания DBeaver Community"](Docs/screenshots/Download-Dbeaver-Community.png)
 
 2. Установите программу и перезагрузите компьютер (если потребуется).
 
 3. Запустите DBeaver. На верхней панели выберите: База данных → Новое соединение (или нажмите Ctrl + Shift + N).
 
-![Окно создания нового соединения в DBeaver](screenshots/dbeaver-New-Connection.png)
+![Окно создания нового соединения в DBeaver](Docs/screenshots/dbeaver-New-Connection.png)
 
 4. В открывшемся окне выберите PostgreSQL и нажмите [Далее].
 
-![Окно создания нового соединения в DBeaver выбор БД](screenshots/dbeaver-New-Connection-PostgreSQL.png)
+![Окно создания нового соединения в DBeaver выбор БД](Docs/screenshots/dbeaver-New-Connection-PostgreSQL.png)
 
 5. Настройте параметры подключения к нашей базе данных:
 > * **Хост (Host):** localhost
@@ -139,11 +139,11 @@ docker ps
 > * **Имя пользователя (Username):** postgres
 > * **Пароль (Password):** StrongP@ssw0rdHere
 
-![Окно с заполненными полями](screenshots/dbeaver-connection-settings.png)
+![Окно с заполненными полями](Docs/screenshots/dbeaver-connection-settings.png)
 
 6. Нажмите кнопку **[Test Connection...]**. Вы должны получить сообщение об успешном подключении:
 
-![Окно с заполненными полями](screenshots/dbeaver-success.png)
+![Окно с заполненными полями](Docs/screenshots/dbeaver-success.png)
 
   
 
@@ -155,7 +155,7 @@ docker ps
 1. Откройте **DBeaver**, подключитесь к базе данных `TaskFlow` (порт `5433`).
 2. Создайте новый SQL-скрипт (`Ctrl + ]`) или правая кнопка мыши по соединению → SQL Editor → New SQL Script).
 
-![Окно создания нового скрипта в DBeaver](screenshots/Dbeaver-New-Sql-Script.png)
+![Окно создания нового скрипта в DBeaver](Docs/screenshots/Dbeaver-New-Sql-Script.png)
 
 3. Выполните следующий скрипт для создания таблиц пользователей и токенов:
 
@@ -194,7 +194,7 @@ CREATE INDEX "ix_refreshtokens_expiresat" ON public."RefreshTokens"("ExpiresAt")
 4. После выполнения нажмите кнопку Refresh (F5) в навигаторе баз данных.
 5. Убедитесь, что в схеме public появились таблицы Users и RefreshTokens.
 
-![Окно схемы БД "TaskFlow"](screenshots/Dbeaver-Schema-Tables.png)
+![Окно схемы БД "TaskFlow"](Docs/screenshots/Dbeaver-Schema-Tables.png)
 
 
 ## 🔐 Шаг 5: Создание тестового пользователя (Admin)
@@ -220,7 +220,7 @@ SELECT "Id", "Username", "Email", "CreatedAt"
 FROM public."Users" 
 WHERE "Username" = 'admin';
 ```
-![Окно схемы БД "TaskFlow"](screenshots/Dbeaver-Admin-Created.png)
+![Окно схемы БД "TaskFlow"](Docs/screenshots/Dbeaver-Admin-Created.png)
 
 
 > 💡 **Почему такой формат хеша?**
