@@ -15,4 +15,8 @@
   <Folder Name="/Solution Items/">
     <File Path="Readme.md" />
   </Folder>
+  <Project Path="TaskFlow.Application/TaskFlow.Application.csproj" Id="58d20db9-ccd1-43dc-a8ce-8583bc2c9c84" />
+  <Project Path="TaskFlow.Domain/TaskFlow.Domain.csproj" Id="0fbdcbf1-f668-4fcf-a69f-3e48dcf1ba79" />
+  <Project Path="TaskFlow.Infrastructure/TaskFlow.Infrastructure.csproj" Id="8caf5a33-5757-4a75-8945-b2c2a22ba941" />
+  <Project Path="TaskFlow.WebAPI/TaskFlow.WebAPI.csproj" Id="7b219bf7-c2f8-461c-8d54-fff02d2fdf78" />
 </Solution>
