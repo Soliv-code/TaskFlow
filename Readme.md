@@ -256,3 +256,27 @@ WHERE "Username" = 'admin';
 * `Domain` ➔ **ни на что не ссылается** (абсолютно независим)
 
 После этих действий решение должно успешно собираться (`Build: 4 succeeded, 0 failed`), несмотря на использование Preview-версии .NET.
+
+---
+
+##  Шаг 7: Установка NuGet-пакетов для EF Core
+
+Чтобы Entity Framework Core мог подключиться к нашей PostgreSQL и сгенерировать C#-код, нам нужно установить необходимые пакеты. Мы делаем это в соответствии с правилами Clean Architecture.
+
+1. В Visual Studio откройте **Консоль диспетчера пакетов** (Средства → Диспетчер пакетов NuGet → Консоль диспетчера пакетов).
+2. В выпадающем списке **Проект по умолчанию** (Default project) выберите **TaskFlow.Infrastructure** и выполните команды:
+
+```powershell
+Install-Package Npgsql.EntityFrameworkCore.PostgreSQL
+Install-Package Microsoft.EntityFrameworkCore.Design
+```
+3.  Смените **Проект по умолчанию** на **TaskFlow.WebAPI** и выполните:
+```powershell
+Install-Package Microsoft.EntityFrameworkCore.Tools
+```
+>💡 **Почему именно такое распределение?**
+> * **Infrastructure**: Здесь будет жить `DbContext` и провайдер базы данных (`Npgsql`). Это слой, отвечающий за внешние зависимости.
+> * **WebAPI**: Пакет `Tools` нужен для запуска команд генерации кода (Scaffold) из консоли, поэтому он должен быть установлен в стартовом (запускаемом) проекте.
+> * **Domain и Application**: Остаются абсолютно чистыми! Мы не тянем зависимости от EF Core в ядро проекта.
+
+4.  После установки нажмите **Сборка** → **Пересобрать решение** (Rebuild Solution), чтобы убедиться, что все пакеты корректно интегрировались и конфликтов версий нет (`Build: 4 succeeded, 0 failed`).
