@@ -1,16 +1,17 @@
 <Solution>
-  <Folder Name="/screenshots/">
-    <File Path="screenshots/Dbeaver-Admin-Created.png" />
-    <File Path="screenshots/dbeaver-connection-settings.png" />
-    <File Path="screenshots/dbeaver-New-Connection-PostgreSQL.png" />
-    <File Path="screenshots/dbeaver-New-Connection.png" />
-    <File Path="screenshots/Dbeaver-New-Sql-Script.png" />
-    <File Path="screenshots/Dbeaver-Schema-Tables.png" />
-    <File Path="screenshots/dbeaver-success.png" />
-    <File Path="screenshots/docker-images.png" />
-    <File Path="screenshots/docker-ps.png" />
-    <File Path="screenshots/download-dbeaver-Community.png" />
-    <File Path="screenshots/exploit-protection.png" />
+  <Folder Name="/Docs/" />
+  <Folder Name="/Docs/Screenshots/">
+    <File Path="Docs/Screenshots/Dbeaver-Admin-Created.png" />
+    <File Path="Docs/Screenshots/dbeaver-connection-settings.png" />
+    <File Path="Docs/Screenshots/dbeaver-New-Connection-PostgreSQL.png" />
+    <File Path="Docs/Screenshots/dbeaver-New-Connection.png" />
+    <File Path="Docs/Screenshots/Dbeaver-New-Sql-Script.png" />
+    <File Path="Docs/Screenshots/Dbeaver-Schema-Tables.png" />
+    <File Path="Docs/Screenshots/dbeaver-success.png" />
+    <File Path="Docs/Screenshots/docker-images.png" />
+    <File Path="Docs/Screenshots/docker-ps.png" />
+    <File Path="Docs/Screenshots/download-dbeaver-Community.png" />
+    <File Path="Docs/Screenshots/exploit-protection.png" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path="Readme.md" />
