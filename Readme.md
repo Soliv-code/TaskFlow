@@ -263,7 +263,7 @@ WHERE "Username" = 'admin';
 
 ---
 
-##  Шаг 7: Установка NuGet-пакетов для EF Core
+## 📦 Шаг 7: Установка NuGet-пакетов для EF Core
 
 Чтобы Entity Framework Core мог подключиться к нашей PostgreSQL и сгенерировать C#-код, нам нужно установить необходимые пакеты. Мы делаем это в соответствии с правилами Clean Architecture.
 
@@ -287,7 +287,7 @@ Install-Package Microsoft.EntityFrameworkCore.Tools
 
 ---
 
-##  Шаг 8: Генерация кода из БД (Database First)
+## 🔄 Шаг 8: Генерация кода из БД (Database First)
 
 Теперь, когда пакеты установлены, мы используем Entity Framework Core для автоматической генерации C#-классов на основе нашей схемы PostgreSQL.
 
