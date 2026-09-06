@@ -1,6 +1,7 @@
 <Solution>
-  <Folder Name="/Docs/" />
-  <Folder Name="/Docs/Screenshots/">
+  <Folder Name="/Project Files/" />
+  <Folder Name="/Project Files/Docs/" />
+  <Folder Name="/Project Files/Docs/Screenshots/">
     <File Path="Docs/Screenshots/Dbeaver-Admin-Created.png" />
     <File Path="Docs/Screenshots/dbeaver-connection-settings.png" />
     <File Path="Docs/Screenshots/dbeaver-New-Connection-PostgreSQL.png" />
@@ -13,7 +14,7 @@
     <File Path="Docs/Screenshots/download-dbeaver-Community.png" />
     <File Path="Docs/Screenshots/exploit-protection.png" />
   </Folder>
-  <Folder Name="/Solution Items/">
+  <Folder Name="/Project Files/Solution Items/">
     <File Path="Readme.md" />
   </Folder>
   <Project Path="TaskFlow.Application/TaskFlow.Application.csproj" Id="58d20db9-ccd1-43dc-a8ce-8583bc2c9c84" />
