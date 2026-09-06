@@ -240,12 +240,15 @@ WHERE "Username" = 'admin';
 
 ### 1. Создание проектов
 В решении `TaskFlow` создаются 4 проекта типа **Class Library** (кроме WebAPI):
+![Окно создания Class Library](Docs/Screenshots/csharp_class_library_project.png)
 1. `TaskFlow.Domain` (Ядро, без зависимостей)
 2. `TaskFlow.Application` (Бизнес-логика и интерфейсы)
 3. `TaskFlow.Infrastructure` (Реализация интерфейсов, работа с БД)
 4. `TaskFlow.WebAPI` (Точка входа, контроллеры, настройки)
+![Окно создания Web.API](Docs/Screenshots/csharp_web_api_project.png)
 
 > ⚠️ **Важно:** При создании всех проектов необходимо явно выбрать одну и ту же целевую платформу (например, `.NET 11.0 Preview`), чтобы избежать конфликтов версий при сборке.
+![Окно создания выбора версии .net](Docs/Screenshots/csharp_class_library_version.png)
 
 ### 2. Очистка от шаблонов
 Сразу после создания удаляем мусор, сгенерированный Visual Studio:
