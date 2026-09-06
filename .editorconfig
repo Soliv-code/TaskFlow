@@ -1,0 +1,9 @@
+# Top-most EditorConfig file
+root = true
+
+# Правила для всех C# файлов в решении
+[*.cs]
+
+# Предпочитать пространства имен в области файла (без фигурных скобок)
+# Можно использовать: suggestion, warning, или error
+csharp_style_namespace_declarations = file_scoped:warning
