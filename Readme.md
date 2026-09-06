@@ -381,7 +381,16 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 Финальный этап: создаем точку входа (API) для аутентификации и проверяем выдачу токена.
 
 ### 1. Создание контроллера
-В проекте **TaskFlow.WebAPI** в папке `Controllers` создайте файл `AuthController.cs`:
+> 💡 В версии `.NET 11.0.0-preview.7.26381.103` нет возможности добавить контроллер как в предыдущих версиях через `Add => Controller`. При попытке добавить контроллер таким образом, вы увидите сообщение `Scaffolding is not supported for .NET 11 or later projects.` 
+По этому добавление контроллера производится через локальное меню в `Solution Explorer` (Правой кнопкой мыши вызовите локальное меню папки `Controllers` выберите пункт `Add` далее `New Item`
+
+![Добавление пустого контроллера:](Docs/Screenshots/csharp_add_authcontroller.png)
+
+В открывшемся списке найдите `API Controller - Empty` и измените имя контроллера на: `AuthController.cs`
+
+![Создание пустого контроллера:](Docs/Screenshots/csharp_authcontroller.png)
+
+После создание вставьте данный код:
 
 ```csharp
 using Microsoft.AspNetCore.Mvc;
