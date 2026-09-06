@@ -365,3 +365,86 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 ---
 
+## 🔐 Шаг 10: Создание AuthController и тестирование JWT
+
+Финальный этап: создаем точку входа (API) для аутентификации и проверяем выдачу токена.
+
+### 1. Создание контроллера
+В проекте **TaskFlow.WebAPI** в папке `Controllers` создайте файл `AuthController.cs`:
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using TaskFlow.Application.Contracts.Authentication;
+using TaskFlow.Application.Interfaces;
+
+namespace TaskFlow.WebAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController(IAuthService authService) : ControllerBase
+{
+    private readonly IAuthService _authService = authService;
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        var response = await _authService.LoginAsync(request);
+
+        if (response is null)
+        {
+            return Unauthorized(new { message = "Неверное имя пользователя или пароль" });
+        }
+
+        return Ok(response);
+    }
+}
+```
+>⚠️ **Критически важно:** Убедитесь, что подключен именно ваш `using 
+> TaskFlow.Application.Contracts.Authentication;`. Visual Studio по ошибке может предложить `using 
+>  Microsoft.AspNetCore.Identity.Data;`, что приведет к конфликту типов `LoginRequest` и ошибкам компиляции.
+
+### 2. Тестирование API (рекомендуется Bruno)
+
+Для тестирования мы используем **Bruno** (или Postman/Insomnia), так как он легче и надежнее встроенного Swagger в .NET Preview-версиях.
+
+1.  Запустите проект **TaskFlow.WebAPI** (F5).
+2.  Откройте Bruno и создайте новый запрос:
+    -   **Метод:**  `POST`
+    -   **URL:**  `https://localhost:7053/api/Auth/login`  _(порт может отличаться, проверьте в свойствах проекта)_
+    -   **Body:**  `application/json`
+
+#### ✅ Тест 1: Успешная аутентификация
+
+**Request Body:**
+```json
+{
+  "username": "admin",
+  "password": "Admin123"
+}
+```
+**Expected Response (200 OK):**
+```json
+{
+  "id": 1,
+  "username": "admin",
+  "email": "admin@taskflow.local",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkB0YXNrZmxvdy5sb2NhbCIsImp0aSI6IjRjZTZkZDIyLTg5MDUtNDJmYy1iZTQwLWU3ODA4NmI5ZDE0NiIsImV4cCI6MTc4ODY2MTk3MCwiaXNzIjoiVGFza0Zsb3dBUEkiLCJhdWQiOiJUYXNrRmxvd0NsaWVudCJ9.n2bdQTAkxEQ4_y0DzIEowUxd5R4o9mz51KzKhoDnDPk"
+}
+```
+#### ❌ Тест 2: Неверный логин или пароль
+
+**Request Body:**
+```json
+{
+  "username": "admi",
+  "password": "Admin123"
+}
+```
+**Expected Response (401 Unauthorized):**
+```json
+{
+  "message": "Неверное имя пользователя или пароль"
+}
+```
+
+> 💡 **Итог:** Мы получили полностью рабочий, архитектурно правильный скелет Clean Architecture с JWT-аутентификацией. Слой `Domain` абсолютно чист, `Infrastructure` инкапсулирует логику БД и хеширования, а `WebAPI` управляет маршрутизацией и внедрением зависимостей (DI).
