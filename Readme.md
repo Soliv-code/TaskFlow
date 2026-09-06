@@ -239,7 +239,7 @@ WHERE "Username" = 'admin';
 После настройки БД мы создаем структуру решения в Visual Studio, используя **.NET 11 Preview**. 
 
 ### 1. Создание проектов
-В решении `TaskFlow` создаются 4 проекта типа **Class Library** (кроме WebAPI):
+В решении `TaskFlow` создаются 4 проекта типа **Class Library** (кроме **WebAPI**):
 ![Окно создания Class Library](Docs/Screenshots/csharp_class_library_project.png)
 1. `TaskFlow.Domain` (Ядро, без зависимостей)
 2. `TaskFlow.Application` (Бизнес-логика и интерфейсы)
@@ -248,6 +248,8 @@ WHERE "Username" = 'admin';
 ![Окно создания Web.API](Docs/Screenshots/csharp_web_api_project.png)
 
 > ⚠️ **Важно:** При создании всех проектов необходимо явно выбрать одну и ту же целевую платформу (например, `.NET 11.0 Preview`), чтобы избежать конфликтов версий при сборке.
+>
+
 ![Окно создания выбора версии .net](Docs/Screenshots/csharp_class_library_version.png)
 
 ### 2. Очистка от шаблонов
@@ -271,7 +273,9 @@ WHERE "Username" = 'admin';
 Чтобы Entity Framework Core мог подключиться к нашей PostgreSQL и сгенерировать C#-код, нам нужно установить необходимые пакеты. Мы делаем это в соответствии с правилами Clean Architecture.
 
 1. В Visual Studio откройте **Консоль диспетчера пакетов** (Средства → Диспетчер пакетов NuGet → Консоль диспетчера пакетов).
+![Окно PMC:](Docs/Screenshots/csharp_tools_nuget_pmc.png)
 2. В выпадающем списке **Проект по умолчанию** (Default project) выберите **TaskFlow.Infrastructure** и выполните команды:
+![Окно выбора проекта по умолчанию:](Docs/Screenshots/csharp_tools_change_default_project.png)
 
 ```powershell
 Install-Package Npgsql.EntityFrameworkCore.PostgreSQL
