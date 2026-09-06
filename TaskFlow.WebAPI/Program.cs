@@ -6,6 +6,10 @@ using TaskFlow.Application.Interfaces;
 using TaskFlow.Application.Settings;
 using TaskFlow.Infrastructure.Context;
 using TaskFlow.Infrastructure.Services;
+using TaskFlow.WebAPI.Middleware;
+
+// Нужно для отображения emoji в консоли
+Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +56,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 var app = builder.Build();
+// Глобальная обработка исключений
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
