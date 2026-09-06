@@ -7,4 +7,15 @@ Content-Type: application/json
   "username": "admin", 
   "password": "Admin123"
 }
+
+### Тест 2: Неверный логин или пароль
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
+Accept: application/json
+Content-Type: application/json
+
+{
+  "username": "admi",
+  "password": "Admin123"
+}
+
 ###

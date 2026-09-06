@@ -468,3 +468,40 @@ public class AuthController(IAuthService authService) : ControllerBase
 ```
 
 > 💡 **Итог:** Мы получили полностью рабочий, архитектурно правильный скелет Clean Architecture с JWT-аутентификацией. Слой `Domain` абсолютно чист, `Infrastructure` инкапсулирует логику БД и хеширования, а `WebAPI` управляет маршрутизацией и внедрением зависимостей (DI).
+
+
+### 3. Альтернатива: Тестирование через .http-файл в Visual Studio
+Если у вас нет возможности использовать Bruno (или вы предпочитаете не выходить из IDE), Visual Studio имеет встроенный REST-клиент для работы с файлами `.http` или `.rest`.
+
+**Преимущества:**
+* ✅ Тесты живут прямо в репозитории (можно коммитить в Git)
+* ✅ Не нужны внешние инструменты (Postman, Bruno, Insomnia)
+* ✅ Любой разработчик, склонировавший проект, может сразу тестировать API
+* ✅ Работает оффлайн и не зависит от Swagger
+
+**Как использовать:**
+1. В проекте `TaskFlow.WebAPI` откройте файл `TaskFlow.WebAPI.http` (создается автоматически при создании проекта Web API).
+2. Замените его содержимое на следующий код:
+
+```http
+@TaskFlow.WebAPI_HostAddress = http://localhost:5076
+
+### Тест 1: Успешная аутентификация
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
+Accept: application/json
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Admin123"
+}
+
+### Тест 2: Неверный логин или пароль
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
+Accept: application/json
+Content-Type: application/json
+
+{
+  "username": "admi",
+  "password": "Admin123"
+}
