@@ -1,5 +1,3 @@
-
-
 # 🚀 TaskFlow: Настройка окружения для C# (.NET 11.0.0-preview.7.26381.103) проекта (Clean Architecture + Database First)
 
 Данная инструкция описывает развертывание PostgreSQL в Docker, инициализацию схемы базы данных и подготовку тестовых данных для последующей разработки системы управления задачами с JWT-аутентификацией.
@@ -536,3 +534,181 @@ Content-Type: application/json
 
 
 > ⚠️ **Важно:** Убедитесь, что порт в переменной `@TaskFlow.WebAPI_HostAddress` совпадает с портом вашего запущенного проекта (проверьте в `launchSettings.json` или в свойствах проекта).
+
+---
+
+## 🛡️ Шаг 11: Глобальная обработка исключений и защита от выключенного Docker
+
+Чтобы приложение не "падало" с непонятными ошибками и не спамило консоль, если база данных (Docker) выключена, мы добавим глобальный Middleware. Он перехватит ошибку подключения, вернет клиенту понятный JSON-ответ (статус `503 Service Unavailable`) и запишет полный стектрейс в лог-файл для разработчика.
+
+### 1. Настройка логирования в `appsettings.json`
+Откройте `appsettings.json` в проекте **TaskFlow.WebAPI** и обновите секции `Logging`, а также добавьте `LoggingConfig`:
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Connection": "None",
+      "Microsoft.EntityFrameworkCore.Query": "None"
+    }
+  },
+  "LoggingConfig": {
+    "ErrorLogPath": "Logs/taskflow-errors.log"
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5433;Database=TaskFlow;Username=postgres;Password=StrongP@ssw0rdHere"
+  },
+  "JwtSettings": {
+    "SecretKey": "SuperSecretKeyForTaskFlowProject2026!@#",
+    "Issuer": "TaskFlowAPI",
+    "Audience": "TaskFlowClient",
+    "AccessTokenExpirationMinutes": 15,
+    "RefreshTokenExpirationDays": 7
+  }
+}
+```
+
+> 💡 Почему именно так? Мы глушим спам от EF Core ("None"), так как сами обработаем ошибку подключения, и указываем путь для нативного лог-файла без использования тяжелых сторонних библиотек (вроде Serilog).
+
+### 2. Создание Middleware
+
+В проекте **TaskFlow.WebAPI** создайте папку `Middleware`, а в ней файл `ExceptionHandlingMiddleware.cs`:
+```	csharp
+using System.Data.Common;
+using System.Net;
+using System.Net.Sockets;
+using System.Text.Json;
+using System.IO;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Hosting;
+
+namespace TaskFlow.WebAPI.Middleware;
+
+public class ExceptionHandlingMiddleware(
+    RequestDelegate next,
+    ILogger<ExceptionHandlingMiddleware> logger,
+    IConfiguration configuration,
+    IWebHostEnvironment env)
+{
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await next(context);
+        }
+        catch (Exception ex)
+        {
+            await HandleExceptionAsync(context, ex);
+        }
+    }
+
+    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    {
+        // Проверяем, является ли ошибка проблемой подключения к БД
+        bool isDbConnectionError = exception is DbException || 
+                                   exception is SocketException ||
+                                   (exception is InvalidOperationException && exception.InnerException is SocketException) ||
+                                   exception.Message.Contains("Подключение не установлено", StringComparison.OrdinalIgnoreCase) ||
+                                   exception.Message.Contains("Connection refused", StringComparison.OrdinalIgnoreCase) ||
+                                   exception.Message.Contains("failed to connect", StringComparison.OrdinalIgnoreCase) ||
+                                   (exception is InvalidOperationException inv && inv.Message.Contains("transient failure", StringComparison.OrdinalIgnoreCase));
+
+        if (isDbConnectionError)
+        {
+            logger.LogWarning("⚠️ Ошибка подключения к БД: {Message}. Возможно, не запущен Docker-контейнер.", exception.Message);
+
+            // 🛡️ Запись полного стектрейса в файл (0 сторонних зависимостей!)
+            try
+            {
+                var logRelativePath = configuration["LoggingConfig:ErrorLogPath"] ?? "Logs/taskflow-errors.log";
+                var logFullPath = Path.Combine(env.ContentRootPath, logRelativePath);
+                var logDir = Path.GetDirectoryName(logFullPath);
+                
+                if (!string.IsNullOrEmpty(logDir)) Directory.CreateDirectory(logDir);
+                
+                var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] DB Connection Error:\n{exception}\n{'-', 50}\n";
+                File.AppendAllText(logFullPath, logEntry);
+            }
+            catch (Exception fileEx)
+            {
+                logger.LogError(fileEx, "Не удалось записать ошибку в лог-файл по пути {Path}", configuration["LoggingConfig:ErrorLogPath"]);
+            }
+
+            context.Response.StatusCode = (int)HttpStatusCode.ServiceUnavailable; // 503
+            context.Response.ContentType = "application/json";
+
+            var response = new
+            {
+                title = "База данных недоступна",
+                detail = "Не удалось подключиться к PostgreSQL. Убедитесь, что Docker-контейнер 'taskflow-db' запущен (команда: docker ps).",
+                status = 503
+            };
+
+            await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+            return;
+        }
+
+        // Для всех остальных непредвиденных ошибок
+        logger.LogError(exception, "⚠ Необработанное исключение: {Message}", exception.Message);
+        
+        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError; // 500
+        context.Response.ContentType = "application/json";
+        
+        var errorResponse = new 
+        { 
+            title = "Внутренняя ошибка сервера", 
+            detail = "Произошла непредвиденная ошибка. Проверьте логи.", 
+            status = 500 
+        };
+        
+        await context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse));
+    }
+}
+```
+### 3. Регистрация Middleware в `Program.cs`
+
+Откройте `Program.cs` в проекте **TaskFlow.WebAPI**.
+
+1.  Добавьте `using` в начало файла:
+```csharp
+using TaskFlow.WebAPI.Middleware;
+```
+2.  Добавьте строку `Console.OutputEncoding = System.Text.Encoding.UTF8;` в самое начало файла (чтобы эмодзи в консоли отображались корректно).
+3.  Зарегистрируйте Middleware **сразу после**  `var app = builder.Build();` (это критически важно, чтобы он перехватывал ошибки от всех последующих компонентов):
+
+```csharp
+var app = builder.Build();
+
+// Глобальная обработка исключений (должна быть первой!)
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+```
+### 4. Тестирование "Защиты от дурака"
+
+1.  Остановите контейнер: `docker stop taskflow-db`
+2.  Запустите проект (`Ctrl + F5`).
+3.  Отправьте запрос на логин через `.http` файл или Bruno.
+4.  **Ожидаемый результат:**
+    -   В ответе вы получите чистый JSON со статусом `503`:
+
+```json
+{
+  "title": "База данных недоступна",
+  "detail": "Не удалось подключиться к PostgreSQL. Убедитесь, что Docker-контейнер 'taskflow-db' запущен (команда: docker ps).",
+  "status": 503
+}
+```
+-   В консоли будет только одна чистая строка с предупреждением `⚠️`.
+-   В корне проекта `TaskFlow.WebAPI` появится папка `Logs` с файлом `taskflow-errors.log`, содержащим полный стектрейс для отладки.
+
+>💡 **Итог:** Мы реализовали Enterprise-уровень обработки ошибок без единой сторонней библиотеки. Клиент получает безопасный и понятный ответ, консоль не засорена спамом, а разработчик имеет полный технический лог под рукой.
+
