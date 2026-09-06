@@ -2,20 +2,23 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using System.IO;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Hosting;
 
 namespace TaskFlow.WebAPI.Middleware;
 
 public class ExceptionHandlingMiddleware(
-    RequestDelegate _next,
-    ILogger<ExceptionHandlingMiddleware> _logger,
-    IConfiguration _configuration,
-    IWebHostEnvironment _env) // <-- Добавили среду хостинга для получения корня проекта
+    RequestDelegate next,
+    ILogger<ExceptionHandlingMiddleware> logger,
+    IConfiguration configuration,
+    IWebHostEnvironment env)
 {
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await _next(context);
+            await next(context);
         }
         catch (Exception ex)
         {
@@ -25,6 +28,7 @@ public class ExceptionHandlingMiddleware(
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        // Проверяем, является ли ошибка проблемой подключения к БД
         bool isDbConnectionError = exception is DbException ||
                                    exception is SocketException ||
                                    (exception is InvalidOperationException && exception.InnerException is SocketException) ||
@@ -35,32 +39,23 @@ public class ExceptionHandlingMiddleware(
 
         if (isDbConnectionError)
         {
-            _logger.LogWarning("⚠️ Ошибка подключения к БД: {Message}. Возможно, не запущен Docker-контейнер.", exception.Message);
+            logger.LogWarning("⚠️ Ошибка подключения к БД: {Message}. Возможно, не запущен Docker-контейнер.", exception.Message);
 
-            // Запись в файл на основе конфигурации (безопасно, вне папки bin!)
+            // 🛡️ Запись полного стектрейса в файл (0 сторонних зависимостей!)
             try
             {
-                // 1. Читаем относительный путь из appsettings.json (с фоллбэком по умолчанию)
-                var logRelativePath = _configuration["LoggingConfig:ErrorLogPath"] ?? "Logs/taskflow-errors.log";
-
-                // 2. Собираем абсолютный путь относительно корня проекта (ContentRootPath)
-                var logFullPath = Path.Combine(_env.ContentRootPath, logRelativePath);
-
-                // 3. Создаем директорию, если её нет
+                var logRelativePath = configuration["LoggingConfig:ErrorLogPath"] ?? "Logs/taskflow-errors.log";
+                var logFullPath = Path.Combine(env.ContentRootPath, logRelativePath);
                 var logDir = Path.GetDirectoryName(logFullPath);
-                if (!string.IsNullOrEmpty(logDir))
-                {
-                    Directory.CreateDirectory(logDir);
-                }
 
-                // 4. Дописываем ошибку в конец файла
+                if (!string.IsNullOrEmpty(logDir)) Directory.CreateDirectory(logDir);
+
                 var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] DB Connection Error:\n{exception}\n{'-',50}\n";
                 File.AppendAllText(logFullPath, logEntry);
             }
             catch (Exception fileEx)
             {
-                // Если вдруг нет прав на запись, мы хотя бы не уроним приложение, а просто залогим это
-                _logger.LogError(fileEx, "Не удалось записать ошибку в лог-файл по пути {Path}", _configuration["LoggingConfig:ErrorLogPath"]);
+                logger.LogError(fileEx, "Не удалось записать ошибку в лог-файл по пути {Path}", configuration["LoggingConfig:ErrorLogPath"]);
             }
 
             context.Response.StatusCode = (int)HttpStatusCode.ServiceUnavailable; // 503
@@ -78,7 +73,7 @@ public class ExceptionHandlingMiddleware(
         }
 
         // Для всех остальных непредвиденных ошибок
-        _logger.LogError(exception, "⚠ Необработанное исключение: {Message}", exception.Message);
+        logger.LogError(exception, "⚠ Необработанное исключение: {Message}", exception.Message);
 
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError; // 500
         context.Response.ContentType = "application/json";
