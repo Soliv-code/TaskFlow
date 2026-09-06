@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace TaskFlow.Infrastructure.Entities;
+﻿namespace TaskFlow.Domain.Entities;
 
 public partial class User
 {

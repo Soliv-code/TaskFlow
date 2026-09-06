@@ -309,3 +309,56 @@ Scaffold-DbContext "Host=localhost;Port=5433;Database=TaskFlow;Username=postgres
     -   `RefreshToken.cs`
 
 > ⚠️ **Важное примечание по Clean Architecture:** По умолчанию EF Core генерирует всё в указанный проект. Однако по правилам Clean Architecture, сущности (**`User`**, **`RefreshToken`**) должны находиться в слое **`Domain`**, а **`AppDbContext`** — в **`Infrastructure`**. На следующем шаге мы проведем рефакторинг и разнесем эти файлы по правильным слоям.
+
+---
+
+## 🏗️ Шаг 9: Рефакторинг сгенерированного кода и настройка подключения к БД
+
+По умолчанию EF Core генерирует весь код в один проект. Чтобы соблюсти правила **Clean Architecture**, мы разнесем сущности и контекст по правильным слоям, а строку подключения вынесем в конфигурацию.
+
+### 1. Распределение файлов по слоям
+1. В проекте **TaskFlow.Domain** создайте папку `Entities` и переместите туда файлы `User.cs` и `RefreshToken.cs`.
+2. В проекте **TaskFlow.Infrastructure** создайте папку `Context` и переместите туда файл `AppDbContext.cs`. Старую папку `Entities` в Infrastructure можно удалить.
+3. Исправьте пространства имен (`namespace`) в перемещенных файлах:
+   * В `User.cs` и `RefreshToken.cs`: `namespace TaskFlow.Domain.Entities;`
+   * В `AppDbContext.cs`: `namespace TaskFlow.Infrastructure.Context;`
+4. Добавьте `using TaskFlow.Domain.Entities;` в начало файла `AppDbContext.cs`, чтобы он увидел сущности из другого проекта.
+
+### 2. Вынос строки подключения (Dependency Injection)
+Хардкодить строку подключения внутри `AppDbContext` — это антипаттерн. Мы вынесем её во внешний слой (`WebAPI`).
+
+1. Откройте `AppDbContext.cs` и **полностью удалите** сгенерированный метод `OnConfiguring`.
+2. Откройте `appsettings.json` в проекте **TaskFlow.WebAPI** и добавьте секцию `ConnectionStrings`:
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5433;Database=TaskFlow;Username=postgres;Password=StrongP@ssw0rdHere"
+  }
+}
+```
+
+### 3.  Откройте `Program.cs` в проекте **TaskFlow.WebAPI**. Добавьте необходимые `using` в начало файла:
+```csharp
+using Microsoft.EntityFrameworkCore;
+using TaskFlow.Infrastructure.Context;
+```
+### 4.  Зарегистрируйте `AppDbContext` в контейнере зависимостей (перед строкой `var app = builder.Build();`):
+
+```csharp
+// Регистрация DbContext с использованием строки из appsettings.json
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+```
+
+>💡 **Почему именно так?**
+>
+>-   **Слабая связанность**: Слой `Infrastructure` больше ничего не знает о строке подключения или файлах конфигурации. Он просто получает готовый `DbContext` через конструктор.
+>-   **Безопасность**: Строка подключения хранится в `appsettings.json` (который, кстати, часто добавляют в `.gitignore` для production-версий, оставляя только безопасные шаблоны).
+>-   **Гибкость**: При необходимости вы сможете легко подменить реализацию БД или использовать разные строки для тестов и продакшена.
