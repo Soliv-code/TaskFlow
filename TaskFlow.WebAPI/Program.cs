@@ -15,10 +15,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+// TODO: Выводить чистый лог, а не эту EF поебень с sensitive information
+
 // Регистрируем DbContext с параметром подключения из appsettings.json
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+           //.EnableSensitiveDataLogging() // Показывает значения параметров в логах
+           //.LogTo(Console.WriteLine, LogLevel.Information) // Выводит SQL в консоль
 );
+
 
 // Регистрация настроек JWT из appsettings.json
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
