@@ -18,8 +18,4 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Controllers\Controllers\" />
-  </ItemGroup>
-
 </Project>
