@@ -6,6 +6,7 @@ using TaskFlow.Application.Interfaces;
 using TaskFlow.Application.Settings;
 using TaskFlow.Infrastructure.Context;
 using TaskFlow.Infrastructure.Services;
+using TaskFlow.WebAPI.Logging;
 using TaskFlow.WebAPI.Middleware;
 
 // Нужно для отображения emoji в консоли
@@ -13,9 +14,18 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+// Настройка нативного логирования в файл (очень не хочется сторонние логеры)
+var appLogDirectory = builder.Configuration["LoggingConfig:AppLogDirectory"] ?? "Logs/AppLog";
+var logFileName = $"app-log_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log";
+var logFullPath = Path.Combine(builder.Environment.ContentRootPath, appLogDirectory, logFileName);
 
-// TODO: Выводить чистый лог, а не эту EF поебень с sensitive information
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddProvider(new NativeFileLoggerProvider(logFullPath));
+// ----------------------------------------------
+
+
+builder.Services.AddControllers();
 
 // Регистрируем DbContext с параметром подключения из appsettings.json
 builder.Services.AddDbContext<AppDbContext>(opt =>

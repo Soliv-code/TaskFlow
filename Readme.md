@@ -11,44 +11,24 @@
 
 ## 📋 Предварительные требования
 
-  
-
 1. Скачайте и установите [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) (Docker Desktop for Windows - x86_64).
-
 2. Перезагрузите компьютер после установки.
-
-  
 
 ---
 
-  
-
 ## 🐳 Шаг 1: Установка PostgreSQL в Docker
-
-  
 
 1. Откройте **PowerShell** и скачайте официальный образ PostgreSQL:
 
-  
-
 ```powershell
-
 docker pull postgres:16-alpine
-
 ```
-
-  
-  
 
 2. Убедитесь, что образ успешно скачался:
-
 ```powershell
-
 docker images
-
 ```
 ![Результат команды docker ps](Docs/Screenshots/docker-images.png)
-  
 
 > 💡 Почему именно версия alpine?
 >
@@ -58,13 +38,9 @@ docker images
 >  * Производительность: Потребляет меньше ресурсов и быстрее запускается.
 >  * Для разработки: Внутри контейнера не нужны лишние инструменты, так как подключение к БД происходит снаружи (через DBeaver/pgAdmin).
 
-  
-  
-
 3. Создайте и запустите новый контейнер:
 
 ```powershell
-
 docker run --name taskflow-db `
 -e POSTGRES_USER=postgres `
 -e POSTGRES_PASSWORD=StrongP@ssw0rdHere `
@@ -73,51 +49,37 @@ docker run --name taskflow-db `
 -p 5433:5432 `
 -v taskflow_data:/var/lib/postgresql/data `
 -d postgres:16-alpine
-
 ```
-
-  
 
 4. Проверьте, что контейнер успешно запущен:
 
 ```powershell
-
 docker ps
-
 ```
 
 Ожидаемый результат:
 
-  
-
 ![Результат команды docker ps](Docs/Screenshots/docker-ps.png)
 
-  
-  
+---
 
 ## ⚠️ Шаг 2: Решение возможных проблем с запуском Docker
 
 ВАЖНО! Если после перезагрузки компьютера Docker не стартует или долго висит в статусе Docker Desktop is starting..., выполните следующие действия:
 
 1. Полностью закройте Docker Desktop.
-
 2. Нажмите Win + Q и введите в поиске: Безопасность Windows.
-
 3. В левом меню выберите Управление приложениями и браузером.
-
 4. Внизу страницы нажмите на ссылку Защита от эксплойтов.
-
 5. Перейдите на вкладку Параметры программ.
-
 6. Найдите в списке C:\Windows\System32\VmCompute.exe и нажмите кнопку [Изменить].
-
 7. Найдите блок `Защита потока управления (CFG)` и снимите галочку ✔ с главного пункта "Переопределить системные параметры".
 
 ![Окно "Защита от эксплойтов" в настройках Windows ps](Docs/Screenshots/exploit-protection.png)
 
 8. Сохраните изменения и запустите Docker Desktop заново.
 
-  
+---
 
 ## 💻 Шаг 3: Установка и настройка DBeaver
 
@@ -126,7 +88,6 @@ docker ps
 ![Окно "Скачивания DBeaver Community"](Docs/Screenshots/download-dbeaver-Community.png)
 
 2. Установите программу и перезагрузите компьютер (если потребуется).
-
 3. Запустите DBeaver. На верхней панели выберите: База данных → Новое соединение (или нажмите Ctrl + Shift + N).
 
 ![Окно создания нового соединения в DBeaver](Docs/Screenshots/dbeaver-New-Connection.png)
@@ -148,8 +109,7 @@ docker ps
 
 ![Окно с заполненными полями](Docs/Screenshots/dbeaver-success.png)
 
-  
-
+---
 
 ## 🗄️ Шаг 4: Создание схемы базы данных (Database First)
 
@@ -199,6 +159,7 @@ CREATE INDEX "ix_refreshtokens_expiresat" ON public."RefreshTokens"("ExpiresAt")
 
 ![Окно схемы БД "TaskFlow"](Docs/Screenshots/Dbeaver-Schema-Tables.png)
 
+---
 
 ## 🔐 Шаг 5: Создание тестового пользователя (Admin)
 
@@ -225,12 +186,12 @@ WHERE "Username" = 'admin';
 ```
 ![Окно схемы БД "TaskFlow"](Docs/Screenshots/Dbeaver-Admin-Created.png)
 
-
 > 💡 **Почему такой формат хеша?**
 > 
 > * Мы не используем сторонние пакеты (как BCrypt), а берем встроенный в .NET `Rfc2898DeriveBytes` (PBKDF2).
 > * Формат `100000:salt:hash` позволяет нам хранить все необходимые параметры для проверки пароля в одной строке БД.
 > * Позже мы напишем класс `PasswordHasher` в слое Infrastructure, который будет генерировать и проверять такие строки.
+
 ---
 
 ## 🏗️ Шаг 6: Инициализация структуры решения (Clean Architecture)
@@ -433,9 +394,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 }
 ```
->⚠️ **Критически важно:** Убедитесь, что подключен именно ваш `using 
-> TaskFlow.Application.Contracts.Authentication;`. Visual Studio по ошибке может предложить `using 
->  Microsoft.AspNetCore.Identity.Data;`, что приведет к конфликту типов `LoginRequest` и ошибкам компиляции.
+>⚠️ **Критически важно:** Убедитесь, что подключен именно ваш `using TaskFlow.Application.Contracts.Authentication;`. Visual Studio по ошибке может предложить `using Microsoft.AspNetCore.Identity.Data;`, что приведет к конфликту типов `LoginRequest` и ошибкам компиляции.
 
 ### 2. Тестирование API (рекомендуется Bruno)
 
@@ -462,7 +421,7 @@ public class AuthController(IAuthService authService) : ControllerBase
   "id": 1,
   "username": "admin",
   "email": "admin@taskflow.local",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkB0YXNrZmxvdy5sb2NhbCIsImp0aSI6IjRjZTZkZDIyLTg5MDUtNDJmYy1iZTQwLWU3ODA4NmI5ZDE0NiIsImV4cCI6MTc4ODY2MTk3MCwiaXNzIjoiVGFza0Zsb3dBUEkiLCJhdWQiOiJUYXNrRmxvd0NsaWVudCJ9.n2bdQTAkxEQ4_y0DzIEowUxd5R4o9mz51KzKhoDnDPk"
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 #### ❌ Тест 2: Неверный логин или пароль
@@ -522,8 +481,8 @@ Content-Type: application/json
 ```
 
 > 💡 Как это работает:
-> @TaskFlow.WebAPI_HostAddress — это переменная, которую можно использовать во всех запросах (удобно менять порт в одном месте).
-> ### — разделитель между запросами.
+> `@TaskFlow.WebAPI_HostAddress` — это переменная, которую можно использовать во всех запросах (удобно менять порт в одном месте).
+> `###` — разделитель между запросами.
 > Рядом с каждым запросом появляется зеленая стрелочка ▶ — нажмите на неё, чтобы выполнить запрос.
 > Ответ появится в правой части окна Visual Studio.
 
@@ -532,17 +491,20 @@ Content-Type: application/json
 
 ![Тестирование через http-файл:](Docs/Screenshots/csharp_testing_endpoints_by_http.png)
 
-
 > ⚠️ **Важно:** Убедитесь, что порт в переменной `@TaskFlow.WebAPI_HostAddress` совпадает с портом вашего запущенного проекта (проверьте в `launchSettings.json` или в свойствах проекта).
 
 ---
 
-## 🛡️ Шаг 11: Глобальная обработка исключений и защита от выключенного Docker
+## 🛡️ Шаг 11: Глобальная обработка исключений и профессиональное логирование
 
-Чтобы приложение не "падало" с непонятными ошибками и не спамило консоль, если база данных (Docker) выключена, мы добавим глобальный Middleware. Он перехватит ошибку подключения, вернет клиенту понятный JSON-ответ (статус `503 Service Unavailable`) и запишет полный стектрейс в лог-файл для разработчика.
+Чтобы приложение не "падало" с непонятными ошибками и не спамило консоль, если база данных (Docker) выключена, мы добавили глобальный Middleware. Он перехватывает ошибку подключения, возвращает клиенту понятный JSON-ответ (статус `503 Service Unavailable`) и записывает полный стектрейс в лог-файл для разработчика.
+
+Мы используем **нативное логирование без сторонних библиотек** (вроде Serilog), разделяя логи на два типа для удобства:
+* `Logs/AppLog/` — чистая история жизни приложения (SQL-запросы, инфо, ворнинги).
+* `Logs/Errors/` — критические ошибки с полными стектрейсами и разделителями.
 
 ### 1. Настройка логирования в `appsettings.json`
-Откройте `appsettings.json` в проекте **TaskFlow.WebAPI** и обновите секции `Logging`, а также добавьте `LoggingConfig`:
+Откройте `appsettings.json` в проекте **TaskFlow.WebAPI** и обновите секции `Logging`, а также добавьте `LoggingConfig` с разделением папок:
 
 ```json
 {
@@ -552,11 +514,12 @@ Content-Type: application/json
       "Microsoft.AspNetCore": "Warning",
       "Microsoft.EntityFrameworkCore": "Warning",
       "Microsoft.EntityFrameworkCore.Database.Connection": "None",
-      "Microsoft.EntityFrameworkCore.Query": "None"
+      "Microsoft.EntityFrameworkCore.Database.Command": "None"
     }
   },
   "LoggingConfig": {
-    "ErrorLogPath": "Logs/taskflow-errors.log"
+    "AppLogDirectory": "Logs/AppLog",
+    "ErrorLogDirectory": "Logs/Errors"
   },
   "ConnectionStrings": {
     "DefaultConnection": "Host=localhost;Port=5433;Database=TaskFlow;Username=postgres;Password=StrongP@ssw0rdHere"
@@ -571,9 +534,79 @@ Content-Type: application/json
 }
 ```
 
-> 💡 Почему именно так? Мы глушим спам от EF Core ("None"), так как сами обработаем ошибку подключения, и указываем путь для нативного лог-файла без использования тяжелых сторонних библиотек (вроде Serilog).
+> 💡 **Почему именно так?** Мы глушим спам от EF Core (`"None"`), так как сами обработаем ошибку подключения, и указываем **папки** для логов. Middleware будет автоматически создавать новый файл с текущей датой и временем (например, `taskflow-errors_2026-09-07_05-07-00.log`), что предотвращает разрастание одного огромного файла.
 
-### 2. Создание Middleware
+### 2. Создание нативного файлового логгера (`NativeFileLogger.cs`)
+В проекте **TaskFlow.WebAPI** создайте папку `Logging`, а в ней файл `NativeFileLogger.cs`. Это легкий, потокобезопасный логгер, который пишет в файл ровно то же, что вы видите в консоли, с пустыми строками для читаемости.
+
+```csharp
+using Microsoft.Extensions.Logging;
+using System.IO;
+
+namespace TaskFlow.WebAPI.Logging;
+
+// Провайдер, который создает логгеры
+public class NativeFileLoggerProvider : ILoggerProvider
+{
+    private readonly string _filePath;
+
+    public NativeFileLoggerProvider(string filePath) => _filePath = filePath;
+    public ILogger CreateLogger(string categoryName) => new NativeFileLogger(_filePath, categoryName);
+    public void Dispose() { }
+}
+
+// Сам логгер, который пишет в файл
+public class NativeFileLogger : ILogger
+{
+    private readonly string _filePath;
+    private readonly string _category;
+    private static readonly object _lock = new object();
+
+    public NativeFileLogger(string filePath, string category)
+    {
+        _filePath = filePath;
+        _category = category;
+    }
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+    public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
+
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    {
+        if (!IsEnabled(logLevel)) return;
+
+        var message = formatter(state, exception);
+        if (string.IsNullOrEmpty(message) && exception == null) return;
+
+        // Блокируем поток, чтобы несколько одновременных запросов не испортили файл
+        lock (_lock)
+        {
+            try
+            {
+                var logDir = Path.GetDirectoryName(_filePath);
+                if (!string.IsNullOrEmpty(logDir)) Directory.CreateDirectory(logDir);
+
+                var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{logLevel,-13}] [{_category}]\n      {message}\n";
+                File.AppendAllText(_filePath, logEntry);
+
+                if (exception != null)
+                {
+                    File.AppendAllText(_filePath, $"      {exception}\n");
+                }
+
+                // Пустая строка для разделения записей и улучшения читаемости
+                File.AppendAllText(_filePath, "\n");
+            }
+            catch
+            {
+                // Если не удалось записать в файл, мы не должны ронять всё приложение
+            }
+        }
+    }
+}
+```
+
+### 3. Создание Middleware
 В проекте **TaskFlow.WebAPI** создайте папку `Middleware`, а в ней файл `ExceptionHandlingMiddleware.cs`:
 
 ```csharp
@@ -615,13 +648,13 @@ public class ExceptionHandlingMiddleware(
 
             try
             {
-                // 1. Берем папку из конфига (по умолчанию "Logs")
-                var logDirectory = configuration["LoggingConfig:LogDirectory"] ?? "Logs";
+                // 1. Берем папку для ошибок из конфига (по умолчанию "Logs/Errors")
+                var errorLogDirectory = configuration["LoggingConfig:ErrorLogDirectory"] ?? "Logs/Errors";
                 
-                // 2. Формируем имя файла с датой и временем: taskflow-errors_2026-09-07_03-46-15.log
+                // 2. Формируем имя файла с датой и временем: taskflow-errors_2026-09-07_05-07-00.log
                 // Формат yyyy-MM-dd_HH-mm-ss обеспечивает хронологическую сортировку в проводнике
                 var fileName = $"taskflow-errors_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log";
-                var logFullPath = Path.Combine(env.ContentRootPath, logDirectory, fileName);
+                var logFullPath = Path.Combine(env.ContentRootPath, errorLogDirectory, fileName);
                 
                 // 3. Создаем папку, если её нет
                 var logDir = Path.GetDirectoryName(logFullPath);
@@ -665,28 +698,51 @@ public class ExceptionHandlingMiddleware(
     }
 }
 ```
->💡 Почему такой формат имени файла?
-> * yyyy-MM-dd_HH-mm-ss — обеспечивает хронологическую сортировку в проводнике Windows (файлы стоят ровно по порядку создания).
-> * Двоеточия : заменены на дефисы -, так как двоеточия запрещены в именах файлов Windows.
-> * 24-часовой формат HH исключает путаницу между AM/PM.
-> * Имя начинается с taskflow-errors_, что упрощает поиск и фильтрацию логов.
 
+> 💡 **Почему такой формат имени файла?**
+> * `yyyy-MM-dd_HH-mm-ss` — обеспечивает **хронологическую сортировку** в проводнике Windows (файлы стоят ровно по порядку создания).
+> * Двоеточия `:` заменены на дефисы `-`, так как двоеточия **запрещены** в именах файлов Windows.
+> * 24-часовой формат `HH` исключает путаницу между AM/PM.
+> * Имя начинается с `taskflow-errors_`, что упрощает поиск и фильтрацию логов.
 
-### 3. Регистрация Middleware в `Program.cs`
-
+### 4. Регистрация в `Program.cs`
 Откройте `Program.cs` в проекте **TaskFlow.WebAPI**.
 
-1.  Добавьте `using` в начало файла:
+1. Добавьте `using` в начало файла:
 ```csharp
 using TaskFlow.WebAPI.Middleware;
+using TaskFlow.WebAPI.Logging; // <-- Добавлено для NativeFileLogger
 ```
-2.  Добавьте строку `Console.OutputEncoding = System.Text.Encoding.UTF8;` в самое начало файла (чтобы эмодзи в консоли отображались корректно).
-3.  Зарегистрируйте Middleware **сразу после**  `var app = builder.Build();` (это критически важно, чтобы он перехватывал ошибки от всех последующих компонентов):
+
+2. Добавьте строку `Console.OutputEncoding = System.Text.Encoding.UTF8;` в самое начало файла (чтобы эмодзи в консоли отображались корректно).
+
+3. Настройте нативное логирование **сразу после** `var builder = WebApplication.CreateBuilder(args);`:
+
+```csharp
+Console.OutputEncoding = System.Text.Encoding.UTF8; // Для корректного отображения эмодзи
+
+var builder = WebApplication.CreateBuilder(args);
+
+// --- НАСТРОЙКА НАТИВНОГО ЛОГИРОВАНИЯ ---
+var appLogDirectory = builder.Configuration["LoggingConfig:AppLogDirectory"] ?? "Logs/AppLog";
+var logFileName = $"app-log_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log";
+var logFullPath = Path.Combine(builder.Environment.ContentRootPath, appLogDirectory, logFileName);
+
+builder.Logging.ClearProviders(); // Убираем стандартный шум
+builder.Logging.AddConsole();     // Оставляем вывод в консоль
+builder.Logging.AddProvider(new NativeFileLoggerProvider(logFullPath)); // Добавляем наш файловый логгер
+// ---------------------------------------
+
+builder.Services.AddControllers();
+// ... (остальная регистрация сервисов: DbContext, JWT и т.д.)
+```
+
+4. Зарегистрируйте Middleware **сразу после** `var app = builder.Build();` (это критически важно, чтобы он перехватывал ошибки от всех последующих компонентов):
 
 ```csharp
 var app = builder.Build();
 
-// Глобальная обработка исключений (должна быть первой!)
+// Глобальная обработка исключений (СТРОГО первой!)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
@@ -696,26 +752,29 @@ app.MapControllers();
 
 app.Run();
 ```
-### 4. Тестирование "Защиты от дурака"
 
-1.  Остановите контейнер: `docker stop taskflow-db`
-2.  Запустите проект (`Ctrl + F5`).
-3.  Отправьте запрос на логин через `.http` файл или Bruno.
-4.  **Ожидаемый результат:**
-    -   В ответе вы получите чистый JSON со статусом `503`:
+### 5. Результат
+В папке `Logs` теперь идеальная структура:
+* `Logs/AppLog/app-log_2026-09-07_05-06-30.log` — чистая история жизни приложения (SQL-запросы, инфо, ворнинги) с пустыми строками для читаемости.
+* `Logs/Errors/taskflow-errors_2026-09-07_05-07-00.log` — критические ошибки с полными стектрейсами и длинными разделителями.
 
-```json
-{
-  "title": "База данных недоступна",
-  "detail": "Не удалось подключиться к PostgreSQL. Убедитесь, что Docker-контейнер 'taskflow-db' запущен (команда: docker ps).",
-  "status": 503
-}
-```
--   В консоли будет только одна чистая строка с предупреждением `⚠️`.
--   В корне проекта `TaskFlow.WebAPI` появится папка `Logs` с файлом `taskflow-errors.log`, содержащим полный стектрейс для отладки.
+> 💡 **Итог:** Enterprise-уровень логирования и обработки ошибок, 0 сторонних NuGet-пакетов, полная читаемость и контроль.
 
->💡 **Итог:** Мы реализовали Enterprise-уровень обработки ошибок без единой сторонней библиотеки. Клиент получает безопасный и понятный ответ, консоль не засорена спамом, а разработчик имеет полный технический лог под рукой.
-
+### 6. Тестирование "Защиты от дурака"
+1. Остановите контейнер: `docker stop taskflow-db`
+2. Запустите проект (`Ctrl + F5`).
+3. Отправьте запрос на логин через `.http` файл или Bruno.
+4. **Ожидаемый результат:**
+   * В ответе вы получите чистый JSON со статусом `503`:
+     ```json
+     {
+       "title": "База данных недоступна",
+       "detail": "Не удалось подключиться к PostgreSQL. Убедитесь, что Docker-контейнер 'taskflow-db' запущен (команда: docker ps).",
+       "status": 503
+     }
+     ```
+   * В консоли будет только одна чистая строка с предупреждением `⚠️`.
+   * В папке `Logs/Errors/` появится файл `taskflow-errors_2026-09-07_HH-mm-ss.log` с полным стектрейсом для отладки.
 
 ---
 
@@ -886,8 +945,8 @@ public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
 ```
 
 ### 6. Тестирование Refresh Token
-1. Выполните запрос на /api/Auth/login и скопируйте значение refreshToken из ответа.
-2. Отправьте запрос на /api/Auth/refresh:
+1. Выполните запрос на `/api/Auth/login` и скопируйте значение `refreshToken` из ответа.
+2. Отправьте запрос на `/api/Auth/refresh`:
 
 ```http
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/refresh
@@ -898,9 +957,52 @@ Content-Type: application/json
   "refreshToken": "скопируй_сюда_тот_рефреш_токен_который_ты_получил_при_логине"
 }
 ```
-3. Вы должны получить новую пару токенов (Access + Refresh).
+3. Вы должны получить **новую** пару токенов (Access + Refresh).
 
-> 💡 Почему это безопасно? 
-> * Мы используем Refresh Token Rotation: при каждом обновлении старый Refresh Token помечается как IsRevoked = true и создается новый.
-> * Refresh Token генерируется криптографически стойким методом (RandomNumberGenerator), что делает его невозможным для подбора.
-> * Срок действия Refresh Token (7 дней) настраивается в appsettings.json.
+> 💡 **Почему это безопасно?**
+> * Мы используем **Refresh Token Rotation**: при каждом обновлении старый Refresh Token помечается как `IsRevoked = true` и создается новый.
+> * Refresh Token генерируется криптографически стойким методом (`RandomNumberGenerator`), что делает его невозможным для подбора.
+> * Срок действия Refresh Token (7 дней) настраивается в `appsettings.json`.
+
+---
+
+## 🔒 Шаг 13: Проверка защиты эндпоинтов через [Authorize]
+
+Теперь, когда у нас есть токены, убедимся, что защищенные ресурсы действительно недоступны без них.
+
+### 1. Создание тестового защищенного контроллера
+В проекте **TaskFlow.WebAPI** создайте `Controllers/TestController.cs`:
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace TaskFlow.WebAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize] // <-- Этот атрибут требует валидный JWT-токен в заголовке
+public class TestController : ControllerBase
+{
+    [HttpGet("secure-data")]
+    public IActionResult GetSecureData()
+    {
+        return Ok(new { message = "Доступ разрешен! Вы успешно аутентифицированы." });
+    }
+}
+```
+
+### 2. Тестирование в `.http` файле
+Добавьте в ваш `TaskFlow.WebAPI.http` следующие запросы:
+
+```http
+### Тест 4: Попытка доступа БЕЗ токена (Ожидаем 401 Unauthorized)
+GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
+
+### Тест 5: Доступ С токеном (Ожидаем 200 OK)
+# Замените <ВАШ_JWT_ТОКЕН> на токен, полученный при логине
+GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
+Authorization: Bearer <ВАШ_JWT_ТОКЕН>
+```
+
+> 💡 **Итог:** Система аутентификации, авторизации и логирования полностью готова к использованию в бизнес-логике TaskFlow!
