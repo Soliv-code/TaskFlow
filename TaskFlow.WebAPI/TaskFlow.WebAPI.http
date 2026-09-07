@@ -1,9 +1,9 @@
 @TaskFlow.WebAPI_HostAddress = https://localhost:7053
+
 ### Тест 1: Логин с корректными данными
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
 Accept: application/json
 Content-Type: application/json
-
 {
   "username": "admin", 
   "password": "Admin123"
@@ -13,7 +13,6 @@ Content-Type: application/json
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
 Accept: application/json
 Content-Type: application/json
-
 {
   "username": "admi",
   "password": "Admin123"
@@ -23,15 +22,14 @@ Content-Type: application/json
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/refresh
 Accept: application/json
 Content-Type: application/json
-
 {
-  "refreshToken": "IXoYhxZjtt3QSvuKXQl6V1oSHuZOhVx2cxgsIc7cHk4="
+  "refreshToken": "7VdtXYdhEOqxKCxKHdwuBTZ+D2ei8ARQlQDthY2B3jI="
 }
 
 ### Тест 4: Попытка доступа БЕЗ токена (Ожидаем 401 Unauthorized)
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
 
 ### Тест 5: Доступ С токеном (Ожидаем 200 OK)
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkB0YXNrZmxvdy5sb2NhbCIsImp0aSI6ImYwYWUyMGU2LTllM2YtNDk2MC05M2Y1LWRhZWQ1ZWUyMTY1MCIsImV4cCI6MTc4ODc2MjAwMCwiaXNzIjoiVGFza0Zsb3dBUEkiLCJhdWQiOiJUYXNrRmxvd0NsaWVudCJ9.0179pffGRHTWflrkT_7IB89547mCaHT6kGOF7kgZk94
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkB0YXNrZmxvdy5sb2NhbCIsImp0aSI6IjU3ODBmZTEzLTMyOGMtNDI4OS1hZDBiLWNiYzMyYWM0MjJhYiIsImV4cCI6MTc4ODc2MjY0MCwiaXNzIjoiVGFza0Zsb3dBUEkiLCJhdWQiOiJUYXNrRmxvd0NsaWVudCJ9.o89fRGZ-IlrDY3RXSAy3hpoxDtVKaMhDFJ_NVHf3--U
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
 Authorization: Bearer {{token}}
