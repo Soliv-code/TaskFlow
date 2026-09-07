@@ -712,3 +712,191 @@ app.Run();
 
 >💡 **Итог:** Мы реализовали Enterprise-уровень обработки ошибок без единой сторонней библиотеки. Клиент получает безопасный и понятный ответ, консоль не засорена спамом, а разработчик имеет полный технический лог под рукой.
 
+
+---
+
+## 🔐 Шаг 12: Реализация Refresh Token и ротация токенов
+
+Чтобы пользователю не приходилось вводить логин/пароль каждые 15 минут (когда истекает Access Token), мы реализуем механизм Refresh Token с ротацией.
+
+### 1. Создание DTO для Refresh Token
+В проекте **TaskFlow.Application** в папке `Contracts/Authentication` создайте файл `RefreshTokenRequest.cs`:
+
+```csharp
+namespace TaskFlow.Application.Contracts.Authentication;
+
+public record RefreshTokenRequest(string RefreshToken);
+```
+
+### 2. Обновление AuthResponse
+Откройте `AuthResponse.cs` и добавьте поле `RefreshToken`:
+```csharp
+namespace TaskFlow.Application.Contracts.Authentication;
+
+public record AuthResponse(
+    int Id, 
+    string Username, 
+    string Email, 
+    string Token,
+    string RefreshToken
+);
+```
+
+### 3. Обновление интерфейса IAuthService
+Добавьте новый метод в `IAuthService.cs`:
+```csharp
+using TaskFlow.Application.Contracts.Authentication;
+
+namespace TaskFlow.Application.Interfaces;
+
+public interface IAuthService
+{
+    Task<AuthResponse?> LoginAsync(LoginRequest request);
+    Task<AuthResponse?> RefreshTokenAsync(RefreshTokenRequest request);
+}
+```
+
+### 4. Реализация AuthService с генерацией Refresh Token
+Полностью замените содержимое `AuthService.cs` в проекте `TaskFlow.Infrastructure/Services`:
+
+```csharp
+using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
+using TaskFlow.Application.Contracts.Authentication;
+using TaskFlow.Application.Interfaces;
+using TaskFlow.Application.Settings;
+using TaskFlow.Domain.Entities;
+using TaskFlow.Infrastructure.Context;
+using Microsoft.Extensions.Options;
+
+namespace TaskFlow.Infrastructure.Services;
+
+public class AuthService(
+    AppDbContext _context,
+    IPasswordHasher _passwordHasher,
+    IJwtTokenGenerator _jwtTokenGenerator,
+    IOptions<JwtSettings> jwtOptions) : IAuthService
+{
+    private readonly JwtSettings _jwtSettings = jwtOptions.Value;
+
+    public async Task<AuthResponse?> LoginAsync(LoginRequest request)
+    {
+        // 1. Ищем пользователя по логину
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+        if (user is null) return null;
+
+        // 2. Проверяем пароль
+        if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
+            return null;
+
+        // 3. Генерируем Access Token
+        var accessToken = _jwtTokenGenerator.GenerateToken(user);
+
+        // 4. Генерируем и сохраняем Refresh Token
+        var refreshToken = await GenerateAndSaveRefreshTokenAsync(user.Id);
+
+        // 5. Возвращаем ответ
+        return new AuthResponse(
+            user.Id, 
+            user.Username, 
+            user.Email, 
+            accessToken, 
+            refreshToken
+        );
+    }
+
+    public async Task<AuthResponse?> RefreshTokenAsync(RefreshTokenRequest request)
+    {
+        // 1. Ищем токен в БД
+        var storedToken = await _context.RefreshTokens
+            .Include(rt => rt.User)
+            .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
+
+        // 2. Проверяем, существует ли токен, не истек ли он и не отозван ли
+        if (storedToken is null || storedToken.IsRevoked || storedToken.ExpiresAt < DateTime.UtcNow)
+            return null;
+
+        // 3. Помечаем старый токен как отозванный (ротация)
+        storedToken.IsRevoked = true;
+
+        // 4. Генерируем новую пару токенов
+        var newAccessToken = _jwtTokenGenerator.GenerateToken(storedToken.User);
+        var newRefreshToken = await GenerateAndSaveRefreshTokenAsync(storedToken.UserId);
+
+        await _context.SaveChangesAsync();
+
+        // 5. Возвращаем новую пару
+        return new AuthResponse(
+            storedToken.User.Id,
+            storedToken.User.Username,
+            storedToken.User.Email,
+            newAccessToken,
+            newRefreshToken
+        );
+    }
+
+    // Метод для генерации криптографически стойкого Refresh Token
+    private async Task<string> GenerateAndSaveRefreshTokenAsync(int userId)
+    {
+        // Генерируем случайный токен (256 бит = 32 байта, кодируем в Base64)
+        var randomBytes = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        var refreshToken = Convert.ToBase64String(randomBytes);
+
+        // Создаем сущность RefreshToken
+        var refreshTokenEntity = new RefreshToken
+        {
+            UserId = userId,
+            Token = refreshToken,
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Сохраняем в БД
+        _context.RefreshTokens.Add(refreshTokenEntity);
+        await _context.SaveChangesAsync();
+
+        return refreshToken;
+    }
+}
+```
+
+### 5. Добавление эндпоинта в AuthController
+Откройте `AuthController.cs` и добавьте новый метод:
+
+```csharp
+[HttpPost("refresh")]
+public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+{
+    var response = await _authService.RefreshTokenAsync(request);
+
+    if (response is null)
+    {
+        return Unauthorized(new { message = "Недействительный или истекший refresh token" });
+    }
+
+    return Ok(response);
+}
+```
+
+### 6. Тестирование Refresh Token
+1. Выполните запрос на /api/Auth/login и скопируйте значение refreshToken из ответа.
+2. Отправьте запрос на /api/Auth/refresh:
+
+```http
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/refresh
+Accept: application/json
+Content-Type: application/json
+
+{
+  "refreshToken": "скопируй_сюда_тот_рефреш_токен_который_ты_получил_при_логине"
+}
+```
+3. Вы должны получить новую пару токенов (Access + Refresh).
+
+> 💡 Почему это безопасно? 
+> * Мы используем Refresh Token Rotation: при каждом обновлении старый Refresh Token помечается как IsRevoked = true и создается новый.
+> * Refresh Token генерируется криптографически стойким методом (RandomNumberGenerator), что делает его невозможным для подбора.
+> * Срок действия Refresh Token (7 дней) настраивается в appsettings.json.
