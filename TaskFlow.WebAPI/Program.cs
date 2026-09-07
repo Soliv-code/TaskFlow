@@ -14,7 +14,7 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Настройка нативного логирования в файл (очень не хочется сторонние логеры)
+// -------- Настройка нативного логирования в файл (очень не хочется сторонние логеры) ------------
 var appLogDirectory = builder.Configuration["LoggingConfig:AppLogDirectory"] ?? "Logs/AppLog";
 var logFileName = $"app-log_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log";
 var logFullPath = Path.Combine(builder.Environment.ContentRootPath, appLogDirectory, logFileName);
@@ -22,8 +22,7 @@ var logFullPath = Path.Combine(builder.Environment.ContentRootPath, appLogDirect
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddProvider(new NativeFileLoggerProvider(logFullPath));
-// ----------------------------------------------
-
+// ------------------------------------------------------------------------------------------------
 
 builder.Services.AddControllers();
 
@@ -31,7 +30,6 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
-
 
 // Регистрация настроек JWT из appsettings.json
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));

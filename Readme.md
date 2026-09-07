@@ -457,7 +457,7 @@ public class AuthController(IAuthService authService) : ControllerBase
 2. Замените его содержимое на следующий код:
 
 ```http
-@TaskFlow.WebAPI_HostAddress = http://localhost:5076
+@TaskFlow.WebAPI_HostAddress = https://localhost:7053
 
 ### Тест 1: Успешная аутентификация
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
@@ -1000,9 +1000,13 @@ public class TestController : ControllerBase
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
 
 ### Тест 5: Доступ С токеном (Ожидаем 200 OK)
-# Замените <ВАШ_JWT_ТОКЕН> на токен, полученный при логине
+# Сначала выполни Тест 1 (Логин), скопируй значение поля "token" и вставь его ниже вместо многоточия
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
-Authorization: Bearer <ВАШ_JWT_ТОКЕН>
+Authorization: Bearer {{token}}
 ```
+
+>💡 Совет: Использование переменной `@token = ...` прямо в `.http` файле избавляет от необходимости копировать токен в заголовок вручную и предотвращает ошибки с лишними пробелами или кавычками.
+
 
 > 💡 **Итог:** Система аутентификации, авторизации и логирования полностью готова к использованию в бизнес-логике TaskFlow!
