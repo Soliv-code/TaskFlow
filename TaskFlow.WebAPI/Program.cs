@@ -20,8 +20,6 @@ builder.Services.AddControllers();
 // Регистрируем DbContext с параметром подключения из appsettings.json
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           //.EnableSensitiveDataLogging() // Показывает значения параметров в логах
-           //.LogTo(Console.WriteLine, LogLevel.Information) // Выводит SQL в консоль
 );
 
 

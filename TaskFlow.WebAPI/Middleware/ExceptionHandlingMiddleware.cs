@@ -1,7 +1,10 @@
 ﻿using System.Data.Common;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Hosting;
 
 namespace TaskFlow.WebAPI.Middleware;
 
@@ -31,15 +34,32 @@ public class ExceptionHandlingMiddleware(
         {
             _logger.LogWarning("⚠️ Ошибка подключения к БД: {Message}. Возможно, не запущен Docker-контейнер.", exception.Message);
 
+
             try
             {
-                var logRelativePath = _configuration["LoggingConfig:ErrorLogPath"] ?? "Logs/taskflow-errors.log";
-                var logFullPath = Path.Combine(_env.ContentRootPath, logRelativePath);
+                // 1. Берем папку из конфига (по умолчанию "Logs")
+                var logDirectory = _configuration["LoggingConfig:LogDirectory"] ?? "Logs";
+
+                // 2. Формируем имя файла с текущей датой: taskflow-errors-2026-09-07.log
+                /*
+                var fileName = $"taskflow-errors-{DateTime.Now:yyyy-MM-dd}.log";
+                var logFullPath = Path.Combine(_env.ContentRootPath, logDirectory, fileName);
+                */
+                var fileName = $"taskflow-errors_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log";
+                var logFullPath = Path.Combine(_env.ContentRootPath, logDirectory, fileName);
+
+                // 3. Создаем папку, если её нет
                 var logDir = Path.GetDirectoryName(logFullPath);
+                if (!string.IsNullOrEmpty(logDir))
+                {
+                    Directory.CreateDirectory(logDir);
+                }
 
-                if (!string.IsNullOrEmpty(logDir)) Directory.CreateDirectory(logDir);
+                // 4. Формируем читаемую запись с длинным разделителем (80 символов)
+                var separator = new string('-', 80);
+                var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] DB Connection Error:\n{exception}\n{separator}\n\n";
 
-                var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] DB Connection Error:\n{exception}\n{'-',50}\n";
+                // 5. Дописываем в файл за СЕГОДНЯШНИЙ день
                 File.AppendAllText(logFullPath, logEntry);
             }
             catch (Exception fileEx)
