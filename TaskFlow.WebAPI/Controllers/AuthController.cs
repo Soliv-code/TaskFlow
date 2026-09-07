@@ -13,8 +13,8 @@ using TaskFlow.Application.Interfaces;
 
 namespace TaskFlow.WebAPI.Controllers;
 
-[Route("api/[controller]")]
 [ApiController]
+[Route("api/[controller]")]
 public class AuthController(IAuthService authService) : ControllerBase
 {
     private readonly IAuthService _authService = authService;
@@ -22,7 +22,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if(request is null) return BadRequest("Пустое тело запроса");
+        if(request is null) return BadRequest("Пустое тело запроса!");
         var response = await _authService.LoginAsync(request);
         // Если пользователь не найден  или пароль неверный 
         if (response is null) return Unauthorized(new { message = "Неверное имя пользователя или пароль" });
@@ -30,4 +30,15 @@ public class AuthController(IAuthService authService) : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+    {
+        var response = await _authService.RefreshTokenAsync(request);
+
+        if (response is null)
+        {
+            return Unauthorized(new { message = "Недействительный или истекший refresh token" });
+        }
+        return Ok(response);
+    }
 }

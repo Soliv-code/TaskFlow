@@ -18,4 +18,11 @@ Content-Type: application/json
   "password": "Admin123"
 }
 
-###
+### Тест 3: Обновление токена
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/refresh
+Accept: application/json
+Content-Type: application/json
+
+{
+  "refreshToken": "aMdRAh68vBJbB3KQODggcWR9ooaDN3+hY1sT8zVK2I8="
+}

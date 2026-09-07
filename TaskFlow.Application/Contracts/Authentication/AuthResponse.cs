@@ -4,5 +4,6 @@ public record AuthResponse(
     int Id,
     string Username,
     string Email,
-    string Token
+    string Token,
+    string RefreshToken
 );
