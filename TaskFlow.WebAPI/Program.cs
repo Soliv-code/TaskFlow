@@ -9,7 +9,7 @@ using TaskFlow.Infrastructure.Services;
 using TaskFlow.WebAPI.Logging;
 using TaskFlow.WebAPI.Middleware;
 
-// Нужно для отображения emoji в консоли
+// Устанавливаем кодировку UTF8 для отображения emoji в консоли
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
