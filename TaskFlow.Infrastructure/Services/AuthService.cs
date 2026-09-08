@@ -27,13 +27,19 @@ public class AuthService(
         if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
             return null;
 
-        // 3. Генерируем Access Token
+        // 3. Отзываем ВСЕ старые активные токены этого пользователя
+        await RevokeAllUserTokensAsync(user.Id);
+
+        // 4. Генерируем Access Token
         var accessToken = _jwtTokenGenerator.GenerateToken(user);
 
-        // 4. Генерируем и сохраняем Refresh Token
+        // 5. Генерируем и сохраняем Refresh Token
         var refreshToken = await GenerateAndSaveRefreshTokenAsync(user.Id);
 
-        // 5. Возвращаем ответ
+        // 6. Сохраняем изменения (отзыв старых + добавление нового)
+        await _context.SaveChangesAsync();
+
+        // 7. Возвращаем ответ
         return new AuthResponse(
             user.Id, 
             user.Username, 
@@ -71,6 +77,28 @@ public class AuthService(
             newAccessToken,
             newRefreshToken
         );
+    }
+
+    public async Task LogoutAsync(int userId, string refreshToken)
+    {
+        // При выходе мы просто отзываем ВСЕ активные токены этого пользователя.
+        // Переданный refreshToken можно использовать для аудита (логирования), 
+        // но с точки зрения безопасности нам важно обнулить всё.
+        await RevokeAllUserTokensAsync(userId);
+        await _context.SaveChangesAsync();
+    }
+
+    // Централизованная очистка всех активных токенов пользователя
+    private async Task RevokeAllUserTokensAsync(int userId)
+    {
+        var activeTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+            .ToListAsync();
+
+        foreach (var token in activeTokens)
+        {
+            token.IsRevoked = true;
+        }
     }
 
     // Метод для генерации криптографически стойкого Refresh Token
