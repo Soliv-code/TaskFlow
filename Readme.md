@@ -129,6 +129,7 @@ CREATE TABLE public."Users" (
     "Username" VARCHAR(50) NOT NULL UNIQUE,
     "Email" VARCHAR(100) NOT NULL UNIQUE,
     "PasswordHash" VARCHAR(255) NOT NULL,
+    "Role" VARCHAR(20) NOT NULL DEFAULT 'User',
     "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -172,15 +173,16 @@ CREATE INDEX "ix_refreshtokens_expiresat" ON public."RefreshTokens"("ExpiresAt")
 -- Создаем тестового пользователя admin
 -- Пароль: Admin123 
 -- Формат хеша: итерации:base64_соль:base64_хеш (PBKDF2-HMAC-SHA256, 100k итераций)
-INSERT INTO public."Users" ("Username", "Email", "PasswordHash")
+INSERT INTO public."Users" ("Username", "Email", "PasswordHash", "Role")
 VALUES (
     'admin',
     'admin@taskflow.local',
-    '100000:NDQyY34PFV8T9l5WOcItfQ==:POxpZySDaIgiYHCy8qtVUZnUZeEFAT26H3VWtkJpwYU='
+    '100000:NDQyY34PFV8T9l5WOcItfQ==:POxpZySDaIgiYHCy8qtVUZnUZeEFAT26H3VWtkJpwYU=',
+    'Admin'
 );
 
 -- Проверяем результат
-SELECT "Id", "Username", "Email", "CreatedAt" 
+SELECT "Id", "Username", "Email", "Role", "CreatedAt" 
 FROM public."Users" 
 WHERE "Username" = 'admin';
 ```
@@ -778,9 +780,9 @@ app.Run();
 
 ---
 
-## 🔐 Шаг 12: Реализация Refresh Token и ротация токенов
+## 🔐 Шаг 12: Реализация Refresh Token, Logout и ротация токенов
 
-Чтобы пользователю не приходилось вводить логин/пароль каждые 15 минут (когда истекает Access Token), мы реализуем механизм Refresh Token с ротацией.
+Чтобы пользователю не приходилось вводить логин/пароль каждые 15 минут (когда истекает Access Token), мы реализуем механизм Refresh Token с ротацией. Также мы добавим эндпоинт `Logout` и автоматический отзыв старых токенов при входе для обеспечения "одной активной сессии на пользователя".
 
 ### 1. Создание DTO для Refresh Token
 В проекте **TaskFlow.Application** в папке `Contracts/Authentication` создайте файл `RefreshTokenRequest.cs`:
@@ -806,7 +808,7 @@ public record AuthResponse(
 ```
 
 ### 3. Обновление интерфейса IAuthService
-Добавьте новый метод в `IAuthService.cs`:
+Добавьте новые методы в `IAuthService.cs`:
 ```csharp
 using TaskFlow.Application.Contracts.Authentication;
 
@@ -816,10 +818,11 @@ public interface IAuthService
 {
     Task<AuthResponse?> LoginAsync(LoginRequest request);
     Task<AuthResponse?> RefreshTokenAsync(RefreshTokenRequest request);
+    Task LogoutAsync(int userId, string refreshToken);
 }
 ```
 
-### 4. Реализация AuthService с генерацией Refresh Token
+### 4. Реализация AuthService с ротацией и очисткой токенов
 Полностью замените содержимое `AuthService.cs` в проекте `TaskFlow.Infrastructure/Services`:
 
 ```csharp
@@ -844,51 +847,39 @@ public class AuthService(
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
-        // 1. Ищем пользователя по логину
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
         if (user is null) return null;
 
-        // 2. Проверяем пароль
         if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
             return null;
 
-        // 3. Генерируем Access Token
-        var accessToken = _jwtTokenGenerator.GenerateToken(user);
+        // Отзываем ВСЕ старые активные токены этого пользователя (soft delete)
+        await RevokeAllUserTokensAsync(user.Id);
 
-        // 4. Генерируем и сохраняем Refresh Token
+        var accessToken = _jwtTokenGenerator.GenerateToken(user);
         var refreshToken = await GenerateAndSaveRefreshTokenAsync(user.Id);
 
-        // 5. Возвращаем ответ
-        return new AuthResponse(
-            user.Id, 
-            user.Username, 
-            user.Email, 
-            accessToken, 
-            refreshToken
-        );
+        await _context.SaveChangesAsync();
+
+        return new AuthResponse(user.Id, user.Username, user.Email, accessToken, refreshToken);
     }
 
     public async Task<AuthResponse?> RefreshTokenAsync(RefreshTokenRequest request)
     {
-        // 1. Ищем токен в БД
         var storedToken = await _context.RefreshTokens
             .Include(rt => rt.User)
             .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
 
-        // 2. Проверяем, существует ли токен, не истек ли он и не отозван ли
         if (storedToken is null || storedToken.IsRevoked || storedToken.ExpiresAt < DateTime.UtcNow)
             return null;
 
-        // 3. Помечаем старый токен как отозванный (ротация)
         storedToken.IsRevoked = true;
 
-        // 4. Генерируем новую пару токенов
         var newAccessToken = _jwtTokenGenerator.GenerateToken(storedToken.User);
         var newRefreshToken = await GenerateAndSaveRefreshTokenAsync(storedToken.UserId);
 
         await _context.SaveChangesAsync();
 
-        // 5. Возвращаем новую пару
         return new AuthResponse(
             storedToken.User.Id,
             storedToken.User.Username,
@@ -898,16 +889,33 @@ public class AuthService(
         );
     }
 
-    // Метод для генерации криптографически стойкого Refresh Token
+    public async Task LogoutAsync(int userId, string refreshToken)
+    {
+        // При выходе отзываем ВСЕ активные токены этого пользователя
+        await RevokeAllUserTokensAsync(userId);
+        await _context.SaveChangesAsync();
+    }
+
+    // Централизованная очистка всех активных токенов пользователя (DRY-принцип)
+    private async Task RevokeAllUserTokensAsync(int userId)
+    {
+        var activeTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+            .ToListAsync();
+
+        foreach (var token in activeTokens)
+        {
+            token.IsRevoked = true;
+        }
+    }
+
     private async Task<string> GenerateAndSaveRefreshTokenAsync(int userId)
     {
-        // Генерируем случайный токен (256 бит = 32 байта, кодируем в Base64)
         var randomBytes = new byte[32];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
         var refreshToken = Convert.ToBase64String(randomBytes);
 
-        // Создаем сущность RefreshToken
         var refreshTokenEntity = new RefreshToken
         {
             UserId = userId,
@@ -917,7 +925,6 @@ public class AuthService(
             CreatedAt = DateTime.UtcNow
         };
 
-        // Сохраняем в БД
         _context.RefreshTokens.Add(refreshTokenEntity);
         await _context.SaveChangesAsync();
 
@@ -926,43 +933,42 @@ public class AuthService(
 }
 ```
 
-### 5. Добавление эндпоинта в AuthController
-Откройте `AuthController.cs` и добавьте новый метод:
+### 5. Добавление эндпоинтов в AuthController
+Откройте `AuthController.cs` и добавьте методы `Refresh` и `Logout`:
 
 ```csharp
 [HttpPost("refresh")]
 public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
 {
     var response = await _authService.RefreshTokenAsync(request);
-
     if (response is null)
-    {
         return Unauthorized(new { message = "Недействительный или истекший refresh token" });
-    }
-
     return Ok(response);
 }
-```
 
-### 6. Тестирование Refresh Token
-1. Выполните запрос на `/api/Auth/login` и скопируйте значение `refreshToken` из ответа.
-2. Отправьте запрос на `/api/Auth/refresh`:
-
-```http
-POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/refresh
-Accept: application/json
-Content-Type: application/json
-
+[Authorize]
+[HttpPost("logout")]
+public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request)
 {
-  "refreshToken": "скопируй_сюда_тот_рефреш_токен_который_ты_получил_при_логине"
+    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+    if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        return Unauthorized(new { message = "Не удалось определить пользователя" });
+
+    await _authService.LogoutAsync(userId, request.RefreshToken);
+    return Ok(new { message = "Выход выполнен успешно" });
 }
 ```
-3. Вы должны получить **новую** пару токенов (Access + Refresh).
+
+### 6. Тестирование
+1. Выполните запрос на `/api/Auth/login` и скопируйте значение `refreshToken`.
+2. Отправьте запрос на `/api/Auth/refresh` для обновления токена.
+3. Отправьте запрос на `/api/Auth/logout` для выхода.
+4. Проверьте в БД: все токены пользователя теперь имеют `IsRevoked = true`.
 
 > 💡 **Почему это безопасно?**
 > * Мы используем **Refresh Token Rotation**: при каждом обновлении старый Refresh Token помечается как `IsRevoked = true` и создается новый.
-> * Refresh Token генерируется криптографически стойким методом (`RandomNumberGenerator`), что делает его невозможным для подбора.
-> * Срок действия Refresh Token (7 дней) настраивается в `appsettings.json`.
+> * При каждом `Login` и `Logout` все старые токены автоматически отзываются (принцип DRY).
+> * Refresh Token генерируется криптографически стойким методом (`RandomNumberGenerator`).
 
 ---
 
@@ -1000,13 +1006,159 @@ public class TestController : ControllerBase
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
 
 ### Тест 5: Доступ С токеном (Ожидаем 200 OK)
-# Сначала выполни Тест 1 (Логин), скопируй значение поля "token" и вставь его ниже вместо многоточия
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
 Authorization: Bearer {{token}}
 ```
 
->💡 Совет: Использование переменной `@token = ...` прямо в `.http` файле избавляет от необходимости копировать токен в заголовок вручную и предотвращает ошибки с лишними пробелами или кавычками.
-
-
 > 💡 **Итог:** Система аутентификации, авторизации и логирования полностью готова к использованию в бизнес-логике TaskFlow!
+
+---
+
+## 👑 Шаг 14: Реализация ролей и управление пользователями
+
+Для полноценной многопользовательской системы нам нужны роли и возможность создавать новых пользователей через API. Мы реализуем метод `Hash` для генерации паролей и добавим `AdminController` с защитой по роли.
+
+### 1. Обновление сущности User
+Откройте `TaskFlow.Domain/Entities/User.cs` и добавьте свойство `Role`:
+
+```csharp
+public string Role { get; set; } = "User";
+```
+
+### 2. Реализация метода Hash в PasswordHasher
+Откройте `TaskFlow.Infrastructure/Services/PasswordHasher.cs` и добавьте метод `Hash`:
+
+```csharp
+public string Hash(string password)
+{
+    // 1. Генерируем криптографически стойкую случайную соль
+    byte[] salt = new byte[16];
+    using var rng = RandomNumberGenerator.Create();
+    rng.GetBytes(salt);
+
+    // 2. Генерируем хеш из пароля, соли и итераций
+    byte[] hash = Rfc2898DeriveBytes.Pbkdf2(
+        Encoding.UTF8.GetBytes(password),
+        salt,
+        100000,
+        HashAlgorithmName.SHA256,
+        32
+    );
+
+    // 3. Собираем всё в одну строку формата "iterations:salt:hash"
+    return $"100000:{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}";
+}
+```
+
+### 3. Добавление роли в JWT-токен
+Откройте `TaskFlow.Infrastructure/Services/JwtTokenGenerator.cs` и добавьте Claim с ролью:
+
+```csharp
+var claims = new[]
+{
+    new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+    new Claim(JwtRegisteredClaimNames.Email, user.Email),
+    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+    new Claim(ClaimTypes.Role, user.Role) // <-- ДОБАВЛЯЕМ РОЛЬ
+};
+```
+
+### 4. Создание DTO для создания пользователя
+В проекте **TaskFlow.Application** создайте папку `Contracts/Users` и файл `CreateUserRequest.cs`:
+
+```csharp
+namespace TaskFlow.Application.Contracts.Users;
+
+public record CreateUserRequest(
+    string Username,
+    string Email,
+    string Password,
+    string Role = "User"
+);
+```
+
+### 5. Добавление метода CreateUserAsync в IAuthService
+Откройте `TaskFlow.Application/Interfaces/IAuthService.cs`:
+
+```csharp
+using TaskFlow.Application.Contracts.Users;
+
+Task<bool> CreateUserAsync(CreateUserRequest request);
+```
+
+### 6. Реализация CreateUserAsync в AuthService
+Добавьте в `AuthService.cs`:
+
+```csharp
+public async Task<bool> CreateUserAsync(CreateUserRequest request)
+{
+    if (await _context.Users.AnyAsync(u => u.Username == request.Username || u.Email == request.Email))
+        return false;
+
+    var passwordHash = _passwordHasher.Hash(request.Password);
+
+    var newUser = new User
+    {
+        Username = request.Username,
+        Email = request.Email,
+        PasswordHash = passwordHash,
+        Role = request.Role
+    };
+
+    _context.Users.Add(newUser);
+    await _context.SaveChangesAsync();
+
+    return true;
+}
+```
+
+### 7. Создание AdminController
+В проекте **TaskFlow.WebAPI** создайте `Controllers/AdminController.cs`:
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using TaskFlow.Application.Contracts.Users;
+using TaskFlow.Application.Interfaces;
+
+namespace TaskFlow.WebAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "Admin")] // <-- Только для админов!
+public class AdminController(IAuthService authService) : ControllerBase
+{
+    private readonly IAuthService _authService = authService;
+
+    [HttpPost("users")]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+    {
+        var success = await _authService.CreateUserAsync(request);
+        if (!success)
+            return BadRequest(new { message = "Пользователь с таким именем или email уже существует" });
+
+        return Ok(new { message = $"Пользователь {request.Username} успешно создан с ролью {request.Role}" });
+    }
+}
+```
+
+### 8. Тестирование
+Добавьте в `.http` файл:
+
+```http
+### Тест 7: Создание нового пользователя (Только для Admin)
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Admin/users
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "username": "manager",
+  "email": "manager@taskflow.local",
+  "password": "Manager123",
+  "role": "User"
+}
+```
+
+> 💡 **Итог:** Теперь у нас есть полноценная система ролей и управления пользователями. Только администраторы могут создавать новых пользователей через защищённый эндпоинт.
