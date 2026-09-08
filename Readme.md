@@ -1162,3 +1162,36 @@ Authorization: Bearer {{token}}
 ```
 
 > 💡 **Итог:** Теперь у нас есть полноценная система ролей и управления пользователями. Только администраторы могут создавать новых пользователей через защищённый эндпоинт.
+
+---
+
+## 🧹 Шаг 15: Административная очистка просроченных токенов
+
+Вместо ручных SQL-скриптов мы реализовали прозрачные API-эндпоинты для управления устаревшими токенами. Это позволяет администратору видеть, **какие именно** токены будут удалены, перед выполнением операции.
+
+### 1. Эндпоинты в `AdminController`
+Методы защищены атрибутом `[Authorize(Roles = "Admin")]` и поддерживают как глобальную очистку, так и фильтрацию по `UserId`:
+
+```csharp
+[HttpGet("tokens/expired/{userId?}")]
+public async Task<IActionResult> GetExpiredTokens(int? userId = null)
+{
+    var expiredIds = await _authService.GetExpiredTokenIdsAsync(userId);
+    var message = userId.HasValue 
+        ? $"Найдено просроченных токенов для пользователя с Id: {userId}" 
+        : "Найдено просроченных токенов во всей системе";
+
+    return Ok(new { count = expiredIds.Count, expiredIds, message });
+}
+
+[HttpDelete("tokens/expired/{userId?}")]
+public async Task<IActionResult> DeleteExpiredTokens(int? userId = null)
+{
+    var deletedIds = await _authService.DeleteExpiredTokensAsync(userId);
+    var message = userId.HasValue 
+        ? $"Удалено просроченных токенов для пользователя с Id: {userId}" 
+        : "Удалено просроченных токенов во всей системе";
+
+    return Ok(new { deletedCount = deletedIds.Count, deletedIds, message });
+}
+```

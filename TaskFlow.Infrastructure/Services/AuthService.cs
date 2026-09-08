@@ -6,6 +6,7 @@ using TaskFlow.Application.Settings;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Infrastructure.Context;
 using Microsoft.Extensions.Options;
+using TaskFlow.Application.Contracts.Users;
 
 namespace TaskFlow.Infrastructure.Services;
 
@@ -125,5 +126,63 @@ public class AuthService(
         await _context.SaveChangesAsync();
 
         return refreshToken;
+    }
+
+    public async Task<bool> CreateUserAsync(CreateUserRequest request)
+    {
+        // 1. Проверяем, не занят ли логин или email
+        if (await _context.Users.AnyAsync(u => u.Username == request.Username || u.Email == request.Email))
+        {
+            return false; // Пользователь с таким именем или почтой уже существует
+        }
+
+        // 2. Хешируем пароль (вот он, наш метод Hash!)
+        var passwordHash = _passwordHasher.Hash(request.Password);
+
+        // 3. Создаём сущность
+        var newUser = new User
+        {
+            Username = request.Username,
+            Email = request.Email,
+            PasswordHash = passwordHash,
+            Role = request.Role // Берём роль из запроса (Admin или User)
+        };
+
+        // 4. Сохраняем в БД
+        _context.Users.Add(newUser);
+        await _context.SaveChangesAsync();
+
+        return true;
+
+    }
+
+    public async Task<List<int>> GetExpiredTokenIdsAsync(int? userId = null)
+    {
+        var query = _context.RefreshTokens.Where(rt => rt.ExpiresAt < DateTime.UtcNow);
+        if (userId.HasValue)
+            query = query.Where(rt => rt.UserId == userId.Value);
+        return await query.Select(rt => rt.Id).ToListAsync(); 
+    }
+
+    public async Task<List<int>> DeleteExpiredTokensAsync(int? userId = null)
+    {
+        var query = _context.RefreshTokens.Where(rt => rt.ExpiresAt < DateTime.UtcNow);
+
+        if (userId.HasValue)
+            query = query.Where(rt => rt.UserId == userId.Value);
+
+            
+        var expiredTokens = await query.ToListAsync();
+
+        if (expiredTokens.Count > 0)
+        {
+            var deletedIds = expiredTokens.Select(rt => rt.Id).ToList();
+
+            _context.RefreshTokens.RemoveRange(expiredTokens);
+            await _context.SaveChangesAsync();
+
+            return deletedIds;
+        }
+        return new List<int>();
     }
 }

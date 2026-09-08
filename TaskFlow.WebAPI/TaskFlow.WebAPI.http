@@ -1,44 +1,94 @@
 @TaskFlow.WebAPI_HostAddress = https://localhost:7053
 
-### Тест 1: Логин с корректными данными
+### ============================================================================
+### АУТЕНТИФИКАЦИЯ И УПРАВЛЕНИЕ СЕССИЯМИ
+### ============================================================================
+
+### Тест 1: Логин с корректными данными (Получаем Access и Refresh токены)
+# @name login
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
 Accept: application/json
 Content-Type: application/json
+
 {
   "username": "admin", 
   "password": "Admin123"
 }
 
-### Тест 2: Неверный логин или пароль
+### Тест 2: Неверный логин или пароль (Ожидаем 401 Unauthorized)
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
 Accept: application/json
 Content-Type: application/json
+
 {
   "username": "admi",
   "password": "Admin123"
 }
 
-### Тест 3: Обновление токена
+### Тест 3: Обновление токена (Refresh Token Rotation)
+# ⚠️ Внимание: замени refreshToken на актуальный из ответа Теста 1
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/refresh
 Accept: application/json
 Content-Type: application/json
+
 {
   "refreshToken": "7VdtXYdhEOqxKCxKHdwuBTZ+D2ei8ARQlQDthY2B3jI="
 }
 
-### Тест 4: Попытка доступа БЕЗ токена (Ожидаем 401 Unauthorized)
-GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
-
-### Тест 5: Доступ С токеном (Ожидаем 200 OK)
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkB0YXNrZmxvdy5sb2NhbCIsImp0aSI6IjM2YTA1MWE4LWZlMjMtNDBjOS1hM2E0LThkMGQ0NTZkNjM3MCIsImV4cCI6MTc4ODgyMzUxMywiaXNzIjoiVGFza0Zsb3dBUEkiLCJhdWQiOiJUYXNrRmxvd0NsaWVudCJ9.0p2qsZYRo9uoxidPcdqd1tqYTg1b18GJiPhlKFHSI5E
-GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
-Authorization: Bearer {{token}}
-
-### Тест 6: Logout (отзыв токена)
+### Тест 6: Logout (отзыв всех активных токенов пользователя)
+# ⚠️ Внимание: замени refreshToken на актуальный из ответа Теста 1
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/logout
 Accept: application/json
 Content-Type: application/json
 Authorization: Bearer {{token}}
+
 {
   "refreshToken": "Zsm6ULZ11DIdTK+iiKPZbp+pGT2rAmYrSRNu4QV1wrE="
 }
+
+
+### ============================================================================
+### ПРОВЕРКА ЗАЩИТЫ ЭНДПОИНТОВ ([Authorize])
+### ============================================================================
+
+### Тест 4: Попытка доступа к защищенному ресурсу БЕЗ токена (Ожидаем 401 Unauthorized)
+GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
+
+### Тест 5: Доступ к защищенному ресурсу С токеном (Ожидаем 200 OK)
+# 💡 Совет: скопируй значение поля "token" из ответа Теста 1 и вставь его ниже
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkB0YXNrZmxvdy5sb2NhbCIsImp0aSI6IjM2YTA1MWE4LWZlMjMtNDBjOS1hM2E0LThkMGQ0NTZkNjM3MCIsImV4cCI6MTc4ODgyMzUxMywiaXNzIjoiVGFza0Zsb3dBUEkiLCJhdWQiOiJUYXNrRmxvd0NsaWVudCJ9.0p2qsZYRo9uoxidPcdqd1tqYTg1b18GJiPhlKFHSI5E
+
+GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
+Authorization: Bearer {{token}}
+
+
+### ============================================================================
+### АДМИНИСТРИРОВАНИЕ (Только для роли Admin)
+### ============================================================================
+
+### Тест 7: Создание нового пользователя (Только для Admin)
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Admin/users
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "username": "manager",
+  "email": "manager@taskflow.local",
+  "password": "Manager123",
+  "role": "User"
+}
+
+### Тест 8: Просмотр просроченных токенов конкретного пользователя (Id = 1)
+# Возвращает count и массив expiredIds для полного аудита
+GET {{TaskFlow.WebAPI_HostAddress}}/api/Admin/tokens/expired/1
+Authorization: Bearer {{token}}
+
+### Тест 9: Удаление просроченных токенов конкретного пользователя (Id = 1)
+# Возвращает deletedCount и массив deletedIds (какие именно записи удалены)
+DELETE {{TaskFlow.WebAPI_HostAddress}}/api/Admin/tokens/expired/1
+Authorization: Bearer {{token}}
+
+### Тест 10: Глобальная проверка всех просроченных токенов в системе (без фильтра по UserId)
+GET {{TaskFlow.WebAPI_HostAddress}}/api/Admin/tokens/expired
+Authorization: Bearer {{token}}
