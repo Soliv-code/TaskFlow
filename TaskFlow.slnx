@@ -17,6 +17,7 @@
   <Folder Name="/Project Files/Solution Items/">
     <File Path=".editorconfig" />
     <File Path="Readme.md" />
+    <File Path="Roadmap.md" />
   </Folder>
   <Project Path="TaskFlow.Application/TaskFlow.Application.csproj" Id="58d20db9-ccd1-43dc-a8ce-8583bc2c9c84" />
   <Project Path="TaskFlow.Domain/TaskFlow.Domain.csproj" Id="0fbdcbf1-f668-4fcf-a69f-3e48dcf1ba79" />
