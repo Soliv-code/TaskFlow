@@ -7,7 +7,7 @@ namespace TaskFlow.WebAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")] // Понимаем что только админы могут пользовать этот контроллер! 
+[Authorize(Roles = "Admin")] // Понимаем что только админы могут использовать этот контроллер! 
 public class AdminController(IAuthService authService) : ControllerBase
 {
     private readonly IAuthService _authService = authService;
