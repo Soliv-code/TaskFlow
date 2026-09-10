@@ -1,3 +1,4 @@
+
 # 🚀 TaskFlow: Настройка окружения для C# (.NET 11.0.0-preview.7.26381.103) проекта (Clean Architecture + Database First)
 
 Данная инструкция описывает развертывание PostgreSQL в Docker, инициализацию схемы базы данных и подготовку тестовых данных для последующей разработки системы управления задачами с JWT-аутентификацией.
@@ -300,7 +301,7 @@ Install-Package Microsoft.EntityFrameworkCore.Tools
 Теперь, когда пакеты установлены, мы используем Entity Framework Core для автоматической генерации C#-классов на основе нашей схемы PostgreSQL.
 
 1. Откройте **Консоль диспетчера пакетов** (Средства → Диспетчер пакетов NuGet → Консоль диспетчера пакетов).
-2. В списке **Проект по умолчанию** выберите **TaskFlow.Infrastructure**.
+2. В списке **Проект по умолчанию** выберите `TaskFlow.Infrastructure`.
 3. Выполните следующую команду:
 
 ```powershell
@@ -700,6 +701,7 @@ public class ExceptionHandlingMiddleware(
         if (isDbConnectionError)
         {
             logger.LogWarning("⚠️ Ошибка подключения к БД: {Message}. Возможно, не запущен Docker-контейнер.", exception.Message);
+
             try
             {
                 // 1. Берем папку для ошибок из конфига (по умолчанию "Logs/Errors")
@@ -753,25 +755,27 @@ public class ExceptionHandlingMiddleware(
 }
 ```
 
-> 💡 Почему такой формат имени файла?
-> * `yyyy-MM-dd_HH-mm-ss` — обеспечивает хронологическую сортировку в проводнике Windows (файлы стоят ровно по порядку создания).
-> * Двоеточия `:` заменены на дефисы `-`, так как двоеточия запрещены в именах файлов Windows.
-> * 24-часовой формат `HH` исключает путаницу между AM/PM.
-> * Имя начинается с `taskflow-errors_`, что упрощает поиск и фильтрацию логов.
+> 💡 **Почему такой формат имени файла?**
+>
+> - `yyyy-MM-dd_HH-mm-ss` — обеспечивает хронологическую сортировку в проводнике Windows (файлы стоят ровно по порядку создания).
+> - Двоеточия `:` заменены на дефисы `-`, так как двоеточия запрещены в именах файлов Windows.
+> - 24-часовой формат `HH` исключает путаницу между AM/PM.
+> - Имя начинается с `taskflow-errors_`, что упрощает поиск и фильтрацию логов.
 
 ### 4. Регистрация в `Program.cs`
 
 Откройте `Program.cs` в проекте `TaskFlow.WebAPI`.
 
-1. Добавьте `using` в начало файла:
+Добавьте `using` в начало файла:
+
 ```csharp
 using TaskFlow.WebAPI.Middleware;
 using TaskFlow.WebAPI.Logging; // <-- Добавлено для NativeFileLogger
 ```
 
-2. Добавьте строку `Console.OutputEncoding = System.Text.Encoding.UTF8;` в самое начало файла (чтобы эмодзи в консоли отображались корректно).
+Добавьте строку `Console.OutputEncoding = System.Text.Encoding.UTF8;` в самое начало файла (чтобы эмодзи в консоли отображались корректно).
 
-3. Настройте нативное логирование сразу после `var builder = WebApplication.CreateBuilder(args);`:
+Настройте нативное логирование сразу после `var builder = WebApplication.CreateBuilder(args);`:
 
 ```csharp
 Console.OutputEncoding = System.Text.Encoding.UTF8; // Для корректного отображения эмодзи
@@ -792,7 +796,7 @@ builder.Services.AddControllers();
 // ... (остальная регистрация сервисов: DbContext, JWT и т.д.)
 ```
 
-4. Зарегистрируйте Middleware сразу после `var app = builder.Build();` (это критически важно, чтобы он перехватывал ошибки от всех последующих компонентов):
+Зарегистрируйте Middleware сразу после `var app = builder.Build();` (это критически важно, чтобы он перехватывал ошибки от всех последующих компонентов):
 
 ```csharp
 var app = builder.Build();
@@ -810,8 +814,9 @@ app.Run();
 ### 5. Результат
 
 В папке `Logs` теперь идеальная структура:
-* `Logs/AppLog/app-log_2026-09-07_05-06-30.log` — чистая история жизни приложения (SQL-запросы, инфо, ворнинги) с пустыми строками для читаемости.
-* `Logs/Errors/taskflow-errors_2026-09-07_05-07-00.log` — критические ошибки с полными стектрейсами и длинными разделителями.
+
+- `Logs/AppLog/app-log_2026-09-07_05-06-30.log` — чистая история жизни приложения (SQL-запросы, инфо, ворнинги) с пустыми строками для читаемости.
+- `Logs/Errors/taskflow-errors_2026-09-07_05-07-00.log` — критические ошибки с полными стектрейсами и длинными разделителями.
 
 > 💡 **Итог:** Enterprise-уровень логирования и обработки ошибок, 0 сторонних NuGet-пакетов, полная читаемость и контроль.
 
@@ -824,6 +829,7 @@ app.Run();
 **Ожидаемый результат:**
 
 В ответе вы получите чистый JSON со статусом `503`:
+
 ```json
 {
        "title": "База данных недоступна",
@@ -832,8 +838,8 @@ app.Run();
 }
 ```
 
-В консоли будет только одна чистая строка с предупреждением `⚠️`.
-В папке `Logs/Errors/` появится файл `taskflow-errors_2026-09-07_HH-mm-ss.log` с полным стектрейсом для отладки.
+- В консоли будет только одна чистая строка с предупреждением `⚠️`.
+- В папке `Logs/Errors/` появится файл `taskflow-errors_2026-09-07_HH-mm-ss.log` с полным стектрейсом для отладки.
 
 ---
 
@@ -1132,10 +1138,11 @@ public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest
 3. Отправьте запрос на `/api/Auth/logout` для выхода.
 4. Проверьте в БД: все токены пользователя теперь имеют `IsRevoked = true`.
 
-> 💡 Почему это безопасно?
-> * Мы используем **Refresh Token Rotation**: при каждом обновлении старый Refresh Token помечается как `IsRevoked = true` и создается новый.
-> * При каждом `Login` и `Logout` все старые токены автоматически отзываются (принцип DRY).
-> * Refresh Token генерируется криптографически стойким методом (`RandomNumberGenerator`).
+> 💡 **Почему это безопасно?**
+>
+> - Мы используем **Refresh Token Rotation**: при каждом обновлении старый Refresh Token помечается как `IsRevoked = true` и создается новый.
+> - При каждом `Login` и `Logout` все старые токены автоматически отзываются (принцип DRY).
+> - Refresh Token генерируется криптографически стойким методом (`RandomNumberGenerator`).
 
 ---
 
@@ -1176,6 +1183,7 @@ GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
 
 ### Тест 5: Доступ С токеном (Ожидаем 200 OK)
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
 Authorization: Bearer {{token}}
 ```
@@ -1210,7 +1218,6 @@ public partial class User
     
     // Флаг обязательной смены временного пароля
     public bool MustChangePassword { get; set; }
-
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
@@ -1289,6 +1296,7 @@ public partial class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Token).HasMaxLength(255).IsRequired();
             entity.HasIndex(e => e.Token).IsUnique();
+
             entity.HasOne(e => e.User)
                   .WithMany(u => u.RefreshTokens)
                   .HasForeignKey(e => e.UserId)
@@ -1479,7 +1487,6 @@ public async Task<IActionResult> GetExpiredTokens(int? userId = null)
     var message = userId.HasValue 
         ? $"Найдено просроченных токенов для пользователя с Id: {userId}" 
         : "Найдено просроченных токенов во всей системе";
-
     return Ok(new { count = expiredIds.Count, expiredIds, message });
 }
 
@@ -1490,7 +1497,6 @@ public async Task<IActionResult> DeleteExpiredTokens(int? userId = null)
     var message = userId.HasValue 
         ? $"Удалено просроченных токенов для пользователя с Id: {userId}" 
         : "Удалено просроченных токенов во всей системе";
-
     return Ok(new { deletedCount = deletedIds.Count, deletedIds, message });
 }
 ```
@@ -1514,4 +1520,485 @@ public async Task<IActionResult> DeleteExpiredTokens(int? userId = null)
 7. Logout с отзывом всех токенов.
 8. Очистка просроченных токенов.
 
-> 💡 **Итог:** Мы получили полностью рабочий, архитектурно правильный скелет Clean Architecture с enterprise-уровнем безопасности, логирования и администрирования. Готовы к переходу к бизнес-логике (Phase 2: Project и Task).
+💡 **Итог:** Мы получили полностью рабочий, архитектурно правильный скелет Clean Architecture с enterprise-уровнем безопасности, логирования и администрирования. Готовы к переходу к бизнес-логике (Phase 2: Project и Task).
+
+---
+
+## 📊 Шаг 17: Реализация управления проектами и задачами с RBAC
+
+На этом этапе мы добавляем полноценную систему управления проектами и задачами с командной работой на основе ролевой модели доступа (RBAC).
+
+### 🗄️ 17.1. Создание таблиц базы данных
+
+Откройте DBeaver и выполните следующий SQL-скрипт для создания справочников и основных таблиц:
+
+```sql
+-- Удаляем старые таблицы (если остались от предыдущих попыток)
+DROP TABLE IF EXISTS public."ProjectTasks";
+DROP TABLE IF EXISTS public."Projects";
+DROP TABLE IF EXISTS public."ProjectTaskStatuses";
+DROP TABLE IF EXISTS public."ProjectTaskPriorities";
+DROP TABLE IF EXISTS public."ProjectMembers";
+DROP TABLE IF EXISTS public."ProjectMemberRoles";
+
+-- 1. Справочник статусов задач проекта
+CREATE TABLE public."ProjectTaskStatuses" (
+    "Id" INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    "Name" VARCHAR(50) NOT NULL UNIQUE,
+    "Description" VARCHAR(255),
+    "SortOrder" INT NOT NULL DEFAULT 0,
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Справочник приоритетов задач проекта
+CREATE TABLE public."ProjectTaskPriorities" (
+    "Id" INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    "Name" VARCHAR(50) NOT NULL UNIQUE,
+    "Description" VARCHAR(255),
+    "Color" VARCHAR(20),
+    "SortOrder" INT NOT NULL DEFAULT 0,
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Заполняем справочники
+INSERT INTO public."ProjectTaskStatuses" ("Name", "Description", "SortOrder") VALUES
+('Pending',    'Новая задача, ещё не взята в работу', 1),
+('InProgress', 'Задача в работе',                      2),
+('Completed',  'Задача завершена',                     3),
+('Cancelled',  'Задача отменена',                      4);
+
+INSERT INTO public."ProjectTaskPriorities" ("Name", "Description", "Color", "SortOrder") VALUES
+('Low',      'Низкий приоритет (можно отложить)',                         '#6c757d', 1),
+('Medium',   'Средний приоритет (стандартная задача)',                    '#0d6efd', 2),
+('High',     'Высокий приоритет (важная задача)',                         '#fd7e14', 3),
+('Critical', 'Критический приоритет (требует немедленного внимания)',     '#dc3545', 4);
+
+-- 4. Справочник ролей в проекте
+CREATE TABLE public."ProjectMemberRoles" (
+    "Id" INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    "Name" VARCHAR(50) NOT NULL UNIQUE,
+    "Description" VARCHAR(255),
+    "SortOrder" INT NOT NULL DEFAULT 0,
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Заполняем роли в проекте
+INSERT INTO public."ProjectMemberRoles" ("Name", "Description", "SortOrder") VALUES
+('Owner',  'Создатель проекта. Полный доступ, может удалять проект', 1),
+('Admin',  'Администратор проекта. Может управлять участниками и задачами', 2),
+('Member', 'Участник. Может создавать и редактировать свои задачи', 3),
+('Viewer', 'Наблюдатель. Только просмотр', 4);
+
+-- 6. Таблица проектов
+CREATE TABLE public."Projects" (
+    "Id" INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    "Name" VARCHAR(100) NOT NULL,
+    "Description" TEXT,
+    "OwnerId" INT NOT NULL,
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT "FK_Projects_Users_OwnerId" 
+        FOREIGN KEY ("OwnerId") 
+        REFERENCES public."Users"("Id") 
+        ON DELETE CASCADE
+);
+
+-- 7. Таблица участников проектов (Many-to-Many)
+CREATE TABLE public."ProjectMembers" (
+    "Id" INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    "ProjectId" INT NOT NULL,
+    "UserId" INT NOT NULL,
+    "RoleId" INT NOT NULL,
+    "JoinedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "FK_ProjectMembers_Projects_ProjectId"
+        FOREIGN KEY ("ProjectId")
+        REFERENCES public."Projects"("Id")
+        ON DELETE CASCADE,
+
+    CONSTRAINT "FK_ProjectMembers_Users_UserId"
+        FOREIGN KEY ("UserId")
+        REFERENCES public."Users"("Id")
+        ON DELETE CASCADE,
+
+    CONSTRAINT "FK_ProjectMembers_ProjectMemberRoles_RoleId"
+        FOREIGN KEY ("RoleId")
+        REFERENCES public."ProjectMemberRoles"("Id")
+        ON DELETE RESTRICT,
+
+    -- Уникальность: один пользователь = одна роль в одном проекте
+    CONSTRAINT "UQ_ProjectMembers_Project_User"
+        UNIQUE ("ProjectId", "UserId")
+);
+
+-- 8. Таблица задач проекта
+CREATE TABLE public."ProjectTasks" (
+    "Id" INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    "Title" VARCHAR(200) NOT NULL,
+    "Description" TEXT,
+    "StatusId" INT NOT NULL DEFAULT 1,
+    "PriorityId" INT NOT NULL DEFAULT 2,
+    "ProjectId" INT NOT NULL,
+    "AssigneeId" INT,
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "DueDate" TIMESTAMP WITH TIME ZONE,
+    
+    CONSTRAINT "FK_ProjectTasks_Projects_ProjectId" 
+        FOREIGN KEY ("ProjectId") 
+        REFERENCES public."Projects"("Id") 
+        ON DELETE CASCADE,
+    
+    CONSTRAINT "FK_ProjectTasks_Users_AssigneeId" 
+        FOREIGN KEY ("AssigneeId") 
+        REFERENCES public."Users"("Id") 
+        ON DELETE SET NULL,
+    
+    CONSTRAINT "FK_ProjectTasks_ProjectTaskStatuses_StatusId" 
+        FOREIGN KEY ("StatusId") 
+        REFERENCES public."ProjectTaskStatuses"("Id") 
+        ON DELETE RESTRICT,
+    
+    CONSTRAINT "FK_ProjectTasks_ProjectTaskPriorities_PriorityId" 
+        FOREIGN KEY ("PriorityId") 
+        REFERENCES public."ProjectTaskPriorities"("Id") 
+        ON DELETE RESTRICT
+);
+
+-- 9. Индексы
+CREATE INDEX "ix_projects_ownerid" ON public."Projects"("OwnerId");
+CREATE INDEX "ix_projectmembers_projectid" ON public."ProjectMembers"("ProjectId");
+CREATE INDEX "ix_projectmembers_userid" ON public."ProjectMembers"("UserId");
+CREATE INDEX "ix_projectmembers_roleid" ON public."ProjectMembers"("RoleId");
+CREATE INDEX "ix_projecttasks_projectid" ON public."ProjectTasks"("ProjectId");
+CREATE INDEX "ix_projecttasks_assigneeid" ON public."ProjectTasks"("AssigneeId");
+CREATE INDEX "ix_projecttasks_statusid" ON public."ProjectTasks"("StatusId");
+CREATE INDEX "ix_projecttasks_priorityid" ON public."ProjectTasks"("PriorityId");
+CREATE INDEX "ix_projecttasks_duedate" ON public."ProjectTasks"("DueDate");
+CREATE UNIQUE INDEX "ix_projects_name_owner" ON public."Projects"("Name", "OwnerId");
+
+-- 10. Тестовые данные
+INSERT INTO public."Projects" ("Name", "Description", "OwnerId")
+VALUES ('TaskFlow Development', 'Основной проект разработки системы управления задачами', 1);
+
+INSERT INTO public."ProjectMembers" ("ProjectId", "UserId", "RoleId")
+VALUES 
+(1, 1, 1),  -- admin = Owner проекта
+(1, 2, 3);  -- manager = Member проекта
+
+INSERT INTO public."ProjectTasks" ("Title", "Description", "StatusId", "PriorityId", "ProjectId", "AssigneeId", "DueDate")
+VALUES 
+('Спроектировать архитектуру',     'Создать ER-диаграмму и определить связи между сущностями', 3, 4, 1, 1, NULL),
+('Реализовать JWT аутентификацию', 'Добавить JWT токены с ротацией refresh tokens',           3, 3, 1, 1, NULL),
+('Создать CRUD для проектов',      'Реализовать создание, чтение, обновление и удаление проектов', 1, 3, 1, 1, '2026-09-15'),
+('Создать CRUD для задач',         'Реализовать создание, чтение, обновление и удаление задач',    1, 3, 1, NULL, '2026-09-20'),
+('Написать документацию',          'Обновить README и создать API документацию',                  2, 2, 1, 1, '2026-09-25');
+```
+
+### 💡 17.2. Модель прав доступа (RBAC)
+
+Система использует двухуровневую модель ролей:
+
+**Глобальные роли (таблица `Roles`):**
+- `Admin` — полный доступ ко всей системе
+- `User` — стандартный пользователь
+
+**Роли в проекте (таблица `ProjectMemberRoles`):**
+- `Owner` — создатель проекта, может удалять проект и управлять участниками
+- `Admin` — администратор проекта, может управлять задачами и участниками
+- `Member` — участник, может создавать и редактировать свои задачи
+- `Viewer` — наблюдатель, только просмотр
+
+**Правила доступа:**
+
+| Действие | Требование |
+|----------|------------|
+| Видеть проект | Участник проекта (`ProjectMembers`) ИЛИ глобальный Admin |
+| Создать задачу | Участник проекта с ролью Member/Admin/Owner ИЛИ глобальный Admin |
+| Редактировать задачу | Assignee задачи ИЛИ участник проекта ИЛИ глобальный Admin |
+| Удалить задачу | Owner/Admin проекта ИЛИ глобальный Admin |
+| Удалить проект | Owner проекта ИЛИ глобальный Admin |
+
+### 🔄 17.3. Генерация сущностей из БД
+
+После создания таблиц перегенерируйте сущности:
+
+```powershell
+Scaffold-DbContext "Host=localhost;Port=5433;Database=TaskFlow;Username=postgres;Password=StrongP@ssw0rdHere" Npgsql.EntityFrameworkCore.PostgreSQL -OutputDir Entities -Context AppDbContext -Project TaskFlow.Infrastructure -StartupProject TaskFlow.WebAPI -Force
+```
+
+Перенесите новые сущности (`Project.cs`, `ProjectTask.cs`, `ProjectMember.cs`, `ProjectMemberRole.cs`, `ProjectTaskStatus.cs`, `ProjectTaskPriority.cs`) в `TaskFlow.Domain/Entities` и обновите `AppDbContext.cs` в `TaskFlow.Infrastructure/Context`.
+
+### 📋 17.4. Создание DTO
+
+Создайте DTO для проектов и задач в папках `TaskFlow.Application/Contracts/Projects` и `TaskFlow.Application/Contracts/Tasks`:
+
+**CreateProjectRequest.cs:**
+
+```csharp
+namespace TaskFlow.Application.Contracts.Projects;
+
+public record CreateProjectRequest(
+    string Name,
+    string? Description
+);
+```
+
+**ProjectResponse.cs:**
+
+```csharp
+namespace TaskFlow.Application.Contracts.Projects;
+
+public record ProjectResponse(
+    int Id,
+    string Name,
+    string? Description,
+    int OwnerId,
+    string OwnerUsername,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt
+);
+```
+
+**CreateProjectTaskRequest.cs:**
+
+```csharp
+namespace TaskFlow.Application.Contracts.Tasks;
+
+public record CreateProjectTaskRequest(
+    string Title,
+    string? Description,
+    int ProjectId,
+    int? AssigneeId,
+    int StatusId = 1,
+    int PriorityId = 2,
+    DateTime? DueDate = null
+);
+```
+
+**ProjectTaskResponse.cs:**
+
+```csharp
+namespace TaskFlow.Application.Contracts.Tasks;
+
+public record ProjectTaskResponse(
+    int Id,
+    string Title,
+    string? Description,
+    int StatusId,
+    string StatusName,
+    int PriorityId,
+    string PriorityName,
+    int ProjectId,
+    string ProjectName,
+    int? AssigneeId,
+    string? AssigneeUsername,
+    DateTime CreatedAt,
+    DateTime? DueDate
+);
+```
+
+### 🔧 17.5. Реализация сервисов
+
+Создайте интерфейсы `IProjectService` и `IProjectTaskService` в `TaskFlow.Application/Interfaces`, а затем их реализации `ProjectService.cs` и `ProjectTaskService.cs` в `TaskFlow.Infrastructure/Services`.
+
+**Ключевые особенности:**
+- Все методы проверяют права доступа через `ProjectMembers`
+- При создании проекта пользователь автоматически становится `Owner`
+- При создании задачи проверяется, что Assignee является участником проекта
+- Удаление проекта запрещено, если в нём есть задачи
+
+### 🌐 17.6. Контроллеры
+
+Создайте `ProjectController.cs` и `ProjectTaskController.cs` в `TaskFlow.WebAPI/Controllers`:
+
+**ProjectController:**
+- `GET /api/Project` — получить все проекты (фильтрация по правам)
+- `GET /api/Project/{id}` — получить проект по ID
+- `POST /api/Project` — создать проект
+- `PUT /api/Project/{id}` — обновить проект
+- `DELETE /api/Project/{id}` — удалить проект
+
+**ProjectTaskController:**
+- `GET /api/ProjectTask?projectId=&statusId=&priorityId=&assigneeId=` — получить задачи с фильтрами
+- `GET /api/ProjectTask/{id}` — получить задачу по ID
+- `POST /api/ProjectTask` — создать задачу
+- `PUT /api/ProjectTask/{id}` — обновить задачу
+- `PATCH /api/ProjectTask/{id}/status` — быстро изменить статус
+- `DELETE /api/ProjectTask/{id}` — удалить задачу
+
+### 🧪 17.7. Тестирование
+
+Добавьте в `.http` файл тестовые запросы:
+
+```http
+### Получить все проекты (Admin видит все)
+GET {{TaskFlow.WebAPI_HostAddress}}/api/Project
+Authorization: Bearer {{adminToken}}
+
+### Создать проект от имени manager
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Project
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{managerToken}}
+
+{
+  "name": "Мобильное приложение",
+  "description": "Разработка кроссплатформенного приложения"
+}
+
+### Создать задачу в проекте
+POST {{TaskFlow.WebAPI_HostAddress}}/api/ProjectTask
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{managerToken}}
+
+{
+  "title": "Протестировать новый контроллер",
+  "description": "Проверить вертикальный срез разработки",
+  "projectId": 1,
+  "assigneeId": 2,
+  "statusId": 1,
+  "priorityId": 3,
+  "dueDate": "2026-09-30T12:00:00Z"
+}
+
+### Получить задачи с фильтрацией (только Pending)
+GET {{TaskFlow.WebAPI_HostAddress}}/api/ProjectTask?statusId=1
+Authorization: Bearer {{adminToken}}
+
+### Быстрая смена статуса задачи
+PATCH {{TaskFlow.WebAPI_HostAddress}}/api/ProjectTask/6/status
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "newStatusId": 2
+}
+```
+
+💡 **Итог:** Мы получили полноценную систему управления проектами и задачами с командной работой, гибкой системой прав доступа и вертикальной разработкой (каждый сервис → контроллер → тестирование). Готовы к следующему этапу развития!
+
+---
+
+## 📚 Раздел: Архитектурные решения и лучшие практики
+
+### ✅ Почему мы используем Clean Architecture
+
+**Преимущества:**
+1. **Независимость от фреймворков** — бизнес-логика в `Domain` и `Application` не зависит от EF Core, ASP.NET Core или PostgreSQL
+2. **Тестируемость** — легко писать unit-тесты для сервисов, подменяя зависимости через интерфейсы
+3. **Поддерживаемость** — чёткое разделение ответственности, новый разработчик быстро понимает структуру
+4. **Масштабируемость** — можно добавлять новые функции, не ломая существующий код
+
+### ✅ Почему Database First
+
+**Наши аргументы:**
+1. **Контроль над схемой БД** — мы явно создаём таблицы, индексы, внешние ключи
+2. **Оптимальная производительность** — сами решаем, какие индексы нужны
+3. **Миграции** — SQL-скрипты версионируются в Git, легко откатить
+4. **Командная работа** — DBA и разработчики работают параллельно
+
+### ✅ Почему табличные роли вместо enum
+
+**Проблема enum:**
+
+```csharp
+// ❌ Плохо: требует перекомпиляции для добавления роли
+public enum UserRole { Admin, User }
+```
+
+**Наше решение:**
+
+```sql
+-- ✅ Хорошо: можно добавить роль через SQL без перекомпиляции
+INSERT INTO "Roles" ("Name", "Description") VALUES ('Moderator', 'Модератор');
+```
+
+### ✅ Почему IDENTITY вместо SERIAL
+
+**SERIAL (устаревший):**
+
+```sql
+"Id" SERIAL PRIMARY KEY  -- Создаёт sequence с именем "table_id_seq"
+```
+
+**IDENTITY (стандарт SQL:2003):**
+
+```sql
+"Id" INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY  -- Стандартный синтаксис
+```
+
+**Преимущества IDENTITY:**
+- Переносимость между СУБД (PostgreSQL, Oracle, DB2)
+- Не создаёт лишних sequence-объектов
+- Лучшая интеграция с EF Core
+
+### ✅ Почему вертикальная разработка (Vertical Slice)
+
+**Проблема горизонтальной:**
+1. Пишем все DTO → все интерфейсы → все сервисы → все контроллеры
+2. Запускаем тесты → получаем 100500 ошибок
+3. Часы отладки, непонятно где ошибка
+
+**Наш подход:**
+1. DTO для Project → ProjectService → ProjectController → Тест
+2. ✅ Работает! Коммитим.
+3. DTO для Task → TaskService → TaskController → Тест
+4. ✅ Работает! Коммитим.
+
+**Результат:** Меньше стресса, быстрее фидбек, чистая история Git.
+
+---
+
+## 🎯 Чек-лист для нового разработчика
+
+Перед началом работы убедитесь, что:
+
+- [ ] Docker Desktop запущен (`docker ps` показывает `taskflow-db`)
+- [ ] DBeaver подключён к БД (localhost:5433, TaskFlow)
+- [ ] Решение собирается без ошибок (`Build: 4 succeeded`)
+- [ ] Проект запускается (`F5` → видите "Now listening on: https://localhost:7053")
+- [ ] `.http` файл работает (зелёная стрелка → `200 OK`)
+
+---
+
+## 🚀 Быстрый старт (Quick Start)
+
+1. **Запуск БД:**
+
+   ```bash
+   docker start taskflow-db
+   ```
+
+2. **Запуск приложения:**
+
+   ```bash
+   cd TaskFlow.WebAPI
+   dotnet run
+   ```
+
+3. **Первый запрос (через .http файл):**
+   - Откройте `TaskFlow.WebAPI.http`
+   - Нажмите ▶ рядом с `POST /api/Auth/login`
+   - Скопируйте токен
+   - Вставьте в `@token = ...`
+   - Выполните `GET /api/Project`
+
+---
+
+## 📞 Поддержка и вопросы
+
+Если возникли проблемы:
+
+1. Проверьте логи в `Logs/Errors/`
+2. Убедитесь, что Docker-контейнер запущен
+3. Проверьте строку подключения в `appsettings.json`
+4. Перечитайте раздел "Решение возможных проблем с запуском Docker"
+
+---
+
+**Дата последней актуализации:** 11.09.2026  
+**Версия проекта:** 1.0.0 (MVP с проектами и задачами)  
+**Статус:** ✅ Production Ready (для внутренней разработки)
