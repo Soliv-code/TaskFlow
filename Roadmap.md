@@ -1,15 +1,16 @@
 # 🗺️ TaskFlow Project Roadmap
 
-> **Статус проекта:** Фаза 1 завершена ✅  
-> **Последнее обновление:** 10.09.2026  
-> **Текущий спринт:** Реализация бизнес-логики (Task/Project)
+**Статус проекта:** Фаза 2 завершена ✅  
+**Последнее обновление:** 11.09.2026  
+**Текущий спринт:** Качество кода (FluentValidation, Swagger, Unit-тесты)
 
 ---
 
 ## 📊 Общий прогресс
-████████████████████░░░░░░░░░░ 65%
+████████████████████████████░░  85%
 
-**Завершено:** 15 из 23 основных задач
+**Завершено:** 20 из 23 основных задач
+
 
 ---
 
@@ -99,50 +100,60 @@
 - [x] ✅ Тестирование через Visual Studio REST Client и Bruno
 
 ### 📚 Документация
-- [x] 📚 Полный README.md (16 шагов)
-  - [x] Все скриншоты сохранены
-  - [x] Примеры кода для каждого шага
-  - [x] Объяснения архитектурных решений
-  - [x] Troubleshooting (Docker, ошибки подключения)
+- [x] 📚 Полный README.md (17 шагов)
+- [x] Все скриншоты сохранены
+- [x] Примеры кода для каждого шага
+- [x] Объяснения архитектурных решений
+- [x] Troubleshooting (Docker, ошибки подключения)
 
 ---
 
-## 🚧 Фаза 2: Бизнес-логика TaskFlow (В ПРОЦЕССЕ)
+## ✅ Фаза 2: Бизнес-логика TaskFlow (ЗАВЕРШЕНА)
 
 ### 📋 Сущности ядра
-- [ ] 📁 Создание сущности `Project` в Domain
-  - [ ] Свойства: Id, Name, Description, OwnerId, CreatedAt, UpdatedAt
-  - [ ] Связь: One-to-Many с Task
-- [ ] 📋 Создание сущности `Task` в Domain
-  - [ ] Свойства: Id, Title, Description, Status, Priority, ProjectId, AssigneeId, CreatedAt, DueDate
-  - [ ] Enum: TaskStatus (Pending, InProgress, Completed), TaskPriority (Low, Medium, High, Critical)
-- [ ] 🗄️ Обновление схемы БД
-  - [ ] SQL скрипт создания таблиц Projects и Tasks
-  - [ ] Индексы для производительности
-  - [ ] Внешние ключи
+- [x] 📁 Создание сущности `Project` в Domain
+  - [x] Свойства: Id, Name, Description, OwnerId, CreatedAt, UpdatedAt
+  - [x] Связь: One-to-Many с ProjectTask
+- [x] 📁 Создание сущности `ProjectTask` в Domain (вместо `Task` — избежали конфликта с `System.Threading.Tasks.Task`)
+  - [x] Свойства: Id, Title, Description, StatusId, PriorityId, ProjectId, AssigneeId, CreatedAt, DueDate
+  - [x] Справочники: `ProjectTaskStatus`, `ProjectTaskPriority` (таблицы вместо enum)
+- [x] 🗄️ Обновление схемы БД
+  - [x] SQL скрипт создания таблиц Projects, ProjectTasks, ProjectMembers, ProjectMemberRoles
+  - [x] Индексы для производительности
+  - [x] Внешние ключи
+  - [x] Справочники статусов и приоритетов
+- [x] 🤝 Командная модель (Many-to-Many через ProjectMembers)
+  - [x] Таблица `ProjectMemberRoles` (Owner, Admin, Member, Viewer)
+  - [x] Уникальный индекс (ProjectId, UserId) — одна роль на пользователя в проекте
+  - [x] Автоматическое добавление создателя как Owner
 
 ### ⚙️ CRUD операции
-- [ ] 📁 ProjectController
-  - [ ] GET `/api/Projects` — список проектов (только свои или все для админа)
-  - [ ] GET `/api/Projects/{id}` — детали проекта
-  - [ ] POST `/api/Projects` — создание проекта
-  - [ ] PUT `/api/Projects/{id}` — обновление проекта
-  - [ ] DELETE `/api/Projects/{id}` — удаление проекта
-- [ ] 📋 TaskController
-  - [ ] GET `/api/Tasks` — список задач (с фильтрацией по статусу, приоритету, проекту)
-  - [ ] GET `/api/Tasks/{id}` — детали задачи
-  - [ ] POST `/api/Tasks` — создание задачи
-  - [ ] PUT `/api/Tasks/{id}` — обновление задачи (включая смену статуса)
-  - [ ] DELETE `/api/Tasks/{id}` — удаление задачи
-  - [ ] PATCH `/api/Tasks/{id}/status` — быстрое изменение статуса
+- [x] 📁 ProjectController
+  - [x] GET `/api/Project` — список проектов (фильтрация по правам через ProjectMembers)
+  - [x] GET `/api/Project/{id}` — детали проекта
+  - [x] POST `/api/Project` — создание проекта (авто-добавление Owner в ProjectMembers)
+  - [x] PUT `/api/Project/{id}` — обновление проекта
+  - [x] DELETE `/api/Project/{id}` — удаление проекта (защита от удаления с задачами)
+- [x] 📋 ProjectTaskController
+  - [x] GET `/api/ProjectTask?projectId=&statusId=&priorityId=&assigneeId=` — список задач с фильтрами
+  - [x] GET `/api/ProjectTask/{id}` — детали задачи
+  - [x] POST `/api/ProjectTask` — создание задачи (с проверкой, что Assignee — участник проекта)
+  - [x] PUT `/api/ProjectTask/{id}` — обновление задачи
+  - [x] PATCH `/api/ProjectTask/{id}/status` — быстрое изменение статуса
+  - [x] DELETE `/api/ProjectTask/{id}` — удаление задачи
 
 ### 🔒 Защита бизнес-логики
-- [ ] 🛡️ Применение `[Authorize]` ко всем контроллерам
-- [ ] 🔐 Проверка прав доступа
-  - [ ] Пользователь видит только свои задачи/проекты
-  - [ ] Admin видит всё
-  - [ ] Owner проекта может управлять им
-- [ ] ✅ Валидация данных (FluentValidation или Data Annotations)
+- [x] 🛡️ Применение `[Authorize]` ко всем контроллерам
+- [x] 🔐 Проверка прав доступа через ProjectMembers (RBAC)
+  - [x] Пользователь видит только проекты/задачи, где он участник
+  - [x] Admin видит всё
+  - [x] Owner проекта может управлять им
+  - [x] Member может создавать задачи
+  - [x] Assignee может редактировать свои задачи
+- [x] ✅ Валидация данных (BusinessException)
+  - [x] Проверка существования StatusId и PriorityId
+  - [x] Проверка, что Assignee — участник проекта
+  - [x] Уникальность названия проекта для владельца
 
 ---
 
@@ -171,7 +182,7 @@
   - [ ] Тесты для AuthService
   - [ ] Тесты для PasswordHasher
   - [ ] Тесты для PasswordValidator
-  - [ ] Тесты для бизнес-логики
+  - [ ] Тесты для бизнес-логики (ProjectService, ProjectTaskService)
 - [ ] 🔗 Integration тесты
   - [ ] Тесты контроллеров с TestServer
   - [ ] Тесты с реальной БД (Testcontainers)
@@ -189,38 +200,42 @@
 
 | Категория | Статус | Прогресс |
 |-----------|--------|----------|
-| **Архитектура** | ✅ Отлично | 100% |
-| **Безопасность** | ✅ Отлично | 100% |
-| **Логирование** | ✅ Отлично | 100% |
-| **Документация** | ✅ Отлично | 100% |
-| **Тестирование** | ⚠️ Требует внимания | 30% |
-| **Бизнес-логика** | 🚧 В разработке | 0% |
-| **UI/UX** | 📅 Запланировано | 0% |
+| Архитектура | ✅ Отлично | 100% |
+| Безопасность | ✅ Отлично | 100% |
+| Логирование | ✅ Отлично | 100% |
+| Документация | ✅ Отлично | 100% |
+| Бизнес-логика | ✅ Завершена | 100% |
+| Тестирование | ⚠️ Требует внимания | 30% |
+| UI/UX | 📅 Запланировано | 0% |
 
 ---
 
-## 🎯 Ближайшие цели (Sprint 1)
+## 🎯 Ближайшие цели (Sprint 2)
 
-1. **Создать сущности Project и Task** (Domain layer)
-2. **Реализовать CRUD для Projects** (Application + Infrastructure)
-3. **Реализовать CRUD для Tasks** (Application + Infrastructure)
-4. **Добавить защиту и валидацию** (Authorize + FluentValidation)
-5. **Написать базовые unit тесты** (xUnit)
+1. Внедрить FluentValidation для DTO
+2. Настроить Swagger/OpenAPI документацию
+3. Написать базовые unit-тесты (xUnit + Moq)
+4. Добавить интеграционные тесты
 
-**Цель спринта:** Рабочий MVP с задачами и проектами к **15.09.2026**
+**Цель спринта:** Повышение качества кода и автоматизация тестирования к 15.09.2026
 
 ---
 
 ## 🏆 Достижения
 
-- ✅ **Clean Architecture** — правильная структура с нуля
-- ✅ **Zero Dependencies** — нативное логирование без Serilog/NLog
-- ✅ **Enterprise Security** — PBKDF2, Refresh Token Rotation, Timing-safe comparison
-- ✅ **Transparent Admin API** — полная аудируемость действий (expiredIds/deletedIds)
-- ✅ **Production Ready** — глобальная обработка ошибок, 503 при недоступности БД
-- ✅ **Table-based Roles** — гибкая система ролей без перекомпиляции
-- ✅ **Password Validation** — строгая валидация сложности паролей
-- ✅ **Temporary Passwords** — механизм обязательной смены временного пароля
+- ✅ Clean Architecture — правильная структура с нуля
+- ✅ Zero Dependencies — нативное логирование без Serilog/NLog
+- ✅ Enterprise Security — PBKDF2, Refresh Token Rotation, Timing-safe comparison
+- ✅ Transparent Admin API — полная аудируемость действий (expiredIds/deletedIds)
+- ✅ Production Ready — глобальная обработка ошибок, 503 при недоступности БД
+- ✅ Table-based Roles — гибкая система ролей без перекомпиляции
+- ✅ Password Validation — строгая валидация сложности паролей
+- ✅ Temporary Passwords — механизм обязательной смены временного пароля
+- ✅ RBAC на уровне проектов — гибкая система прав (Owner/Admin/Member/Viewer)
+- ✅ Vertical Slice Architecture — каждый сервис → контроллер → тест
+- ✅ ProjectTask вместо Task — избежали конфликта с System.Threading.Tasks
+- ✅ IDENTITY вместо SERIAL — стандарт SQL:2003, переносимость между СУБД
+- ✅ Командная работа — многие-ко-многим через ProjectMembers
 
 ---
 
@@ -231,9 +246,9 @@
 - [ ] 📦 Установить NuGet-пакет `Microsoft.Extensions.Caching.StackExchangeRedis`
 - [ ] ⚙️ Настроить `IDistributedCache` в `Program.cs`
 - [ ] 🧠 Реализовать кэширование для "тяжёлых" эндпоинтов:
-  - [ ] GET `/api/Projects` — список проектов
-  - [ ] GET `/api/Tasks` — список задач (с учётом фильтров)
-  - [ ] GET `/api/Users` — список пользователей (для админа)
+  - [ ] GET `/api/Project` — список проектов
+  - [ ] GET `/api/ProjectTask` — список задач (с учётом фильтров)
+  - [ ] GET `/api/Admin/users` — список пользователей (для админа)
 - [ ] 🔄 Настроить стратегию инвалидации кэша (Cache-Aside Pattern)
 - [ ] 📊 Замерить производительность до/после (Stopwatch + логирование)
 
@@ -260,13 +275,11 @@
 
 ## 📝 Примечания
 
-- **Ветка разработки:** `feature/admin-user-management` (текущая), `master` (стабильная)
+- **Ветка разработки:** `feature/project-work-items` (текущая), `master` (стабильная)
 - **Версия .NET:** 11.0.0-preview.7.26381.103
 - **IDE:** Visual Studio Community 2026 Insiders [12120.281]
 - **База данных:** PostgreSQL 16-alpine (Docker)
 - **Порт БД:** 5433
 - **Порт API:** 7053 (HTTPS)
-
----
-
-*Последнее обновление: 10.09.2026 | Автор: TaskFlow Team*
+- **Инструмент тестирования:** Bruno (с поддержкой Secret Variables и .env)
+- **Последнее обновление:** 11.09.2026 | Автор: Илюша
