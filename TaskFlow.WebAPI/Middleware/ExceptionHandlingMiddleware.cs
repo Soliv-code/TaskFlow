@@ -73,6 +73,20 @@ public class ExceptionHandlingMiddleware(
             }));
             return;
         }
+        // Обработка бизнес-исключений (400 Bad Request)
+        if (exception is TaskFlow.Application.Exceptions.BusinessException businessEx)
+        {
+            _logger.LogWarning("⚠️ Бизнес-ошибка: {Message}", businessEx.Message);
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new
+            {
+                title = "Ошибка валидации",
+                detail = businessEx.Message,
+                status = 400
+            }));
+            return;
+        }
 
         _logger.LogError(exception, "⚠ Необработанное исключение: {Message}", exception.Message);
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;

@@ -7,7 +7,12 @@ public partial class User
     public string Email { get; set; } = null!;
     public string PasswordHash { get; set; } = null!;
 
-    public string Role { get; set; } = "User";
+    // Вместо строковой роли теперь связь через внешний ключ
+    public int RoleId { get; set; }
+    public virtual Role Role { get; set; } = null!;
+    
+    // Флаг обязательной смены временного пароля
+    public bool MustChangePassword { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

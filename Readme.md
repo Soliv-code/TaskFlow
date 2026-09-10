@@ -5,7 +5,7 @@
 > *P.s.: Разработка производится в Visual Studio Community 2026 Insiders [12120.281]*
 > *возможно некоторые советы по исправлению уже не актуальны!*
 >
-> *P.s.s.: Дата разработки 06.09.2026*
+> *P.s.s.: Дата разработки 06.09.2026 (актуализация 10.09.2026)*
 
 ---
 
@@ -33,10 +33,10 @@ docker images
 > 💡 Почему именно версия alpine?
 >
 > Alpine — это минималистичный Linux-дистрибутив, который идеально подходит для локальной разработки:
->  * Размер (главная причина): postgres:16-alpine весит ~50-100 MB, тогда как обычный postgres:16 — ~300-400 MB.
->  * Безопасность: Меньше пакетов = меньше потенциальных уязвимостей. Alpine создан с фокусом на безопасность.
->  * Производительность: Потребляет меньше ресурсов и быстрее запускается.
->  * Для разработки: Внутри контейнера не нужны лишние инструменты, так как подключение к БД происходит снаружи (через DBeaver/pgAdmin).
+>  * **Размер (главная причина)**: postgres:16-alpine весит ~50-100 MB, тогда как обычный postgres:16 — ~300-400 MB.
+>  * **Безопасность**: Меньше пакетов = меньше потенциальных уязвимостей. Alpine создан с фокусом на безопасность.
+>  * **Производительность**: Потребляет меньше ресурсов и быстрее запускается.
+>  * **Для разработки**: Внутри контейнера не нужны лишние инструменты, так как подключение к БД происходит снаружи (через DBeaver/pgAdmin).
 
 3. Создайте и запустите новый контейнер:
 
@@ -65,14 +65,14 @@ docker ps
 
 ## ⚠️ Шаг 2: Решение возможных проблем с запуском Docker
 
-ВАЖНО! Если после перезагрузки компьютера Docker не стартует или долго висит в статусе Docker Desktop is starting..., выполните следующие действия:
+ВАЖНО! Если после перезагрузки компьютера Docker не стартует или долго висит в статусе `Docker Desktop is starting...`, выполните следующие действия:
 
 1. Полностью закройте Docker Desktop.
-2. Нажмите Win + Q и введите в поиске: Безопасность Windows.
-3. В левом меню выберите Управление приложениями и браузером.
-4. Внизу страницы нажмите на ссылку Защита от эксплойтов.
-5. Перейдите на вкладку Параметры программ.
-6. Найдите в списке C:\Windows\System32\VmCompute.exe и нажмите кнопку [Изменить].
+2. Нажмите `Win + Q` и введите в поиске: **Безопасность Windows**.
+3. В левом меню выберите **Управление приложениями и браузером**.
+4. Внизу страницы нажмите на ссылку **Защита от эксплойтов**.
+5. Перейдите на вкладку **Параметры программ**.
+6. Найдите в списке `C:\Windows\System32\VmCompute.exe` и нажмите кнопку [Изменить].
 7. Найдите блок `Защита потока управления (CFG)` и снимите галочку ✔ с главного пункта "Переопределить системные параметры".
 
 ![Окно "Защита от эксплойтов" в настройках Windows ps](Docs/Screenshots/exploit-protection.png)
@@ -88,7 +88,7 @@ docker ps
 ![Окно "Скачивания DBeaver Community"](Docs/Screenshots/download-dbeaver-Community.png)
 
 2. Установите программу и перезагрузите компьютер (если потребуется).
-3. Запустите DBeaver. На верхней панели выберите: База данных → Новое соединение (или нажмите Ctrl + Shift + N).
+3. Запустите DBeaver. На верхней панели выберите: База данных → Новое соединение (или нажмите `Ctrl + Shift + N`).
 
 ![Окно создания нового соединения в DBeaver](Docs/Screenshots/dbeaver-New-Connection.png)
 
@@ -116,25 +116,45 @@ docker ps
 Поскольку мы используем подход **Database First**, сначала мы создаем структуру таблиц в PostgreSQL, а затем сгенерируем C#-классы с помощью EF Core.
 
 1. Откройте **DBeaver**, подключитесь к базе данных `TaskFlow` (порт `5433`).
-2. Создайте новый SQL-скрипт (`Ctrl + ]`) или правая кнопка мыши по соединению → SQL Editor → New SQL Script).
+2. Создайте новый SQL-скрипт (`Ctrl + ]`) или правая кнопка мыши по соединению → SQL Editor → New SQL Script.
+3. Выполните следующий скрипт для создания таблиц ролей, пользователей и токенов:
 
 ![Окно создания нового скрипта в DBeaver](Docs/Screenshots/Dbeaver-New-Sql-Script.png)
 
 3. Выполните следующий скрипт для создания таблиц пользователей и токенов:
-
 ```sql
--- 1. Таблица пользователей
+-- 1. Таблица ролей
+CREATE TABLE public."Roles" (
+    "Id" SERIAL PRIMARY KEY,
+    "Name" VARCHAR(50) NOT NULL UNIQUE,
+    "Description" VARCHAR(255),
+    "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Таблица пользователей
 CREATE TABLE public."Users" (
     "Id" SERIAL PRIMARY KEY,
     "Username" VARCHAR(50) NOT NULL UNIQUE,
     "Email" VARCHAR(100) NOT NULL UNIQUE,
     "PasswordHash" VARCHAR(255) NOT NULL,
-    "Role" VARCHAR(20) NOT NULL DEFAULT 'User',
+    "RoleId" INT NOT NULL,
+    "MustChangePassword" BOOLEAN NOT NULL DEFAULT false,
     "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    "UpdatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    "UpdatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT "FK_Users_Roles_RoleId" 
+        FOREIGN KEY ("RoleId") 
+        REFERENCES public."Roles"("Id") 
+        ON DELETE RESTRICT
 );
 
--- 2. Таблица Refresh Tokens
+-- 3. Добавляем базовые роли
+INSERT INTO public."Roles" ("Name", "Description") 
+VALUES 
+('Admin', 'Полный доступ к системе'),
+('User', 'Стандартный пользователь');
+
+-- 4. Таблица Refresh Tokens
 CREATE TABLE public."RefreshTokens" (
     "Id" SERIAL PRIMARY KEY,
     "UserId" INT NOT NULL,
@@ -150,7 +170,7 @@ CREATE TABLE public."RefreshTokens" (
         ON DELETE CASCADE
 );
 
--- 3. Индексы для производительности
+-- 5. Индексы для производительности
 CREATE INDEX "ix_refreshtokens_token" ON public."RefreshTokens"("Token");
 CREATE INDEX "ix_refreshtokens_userid" ON public."RefreshTokens"("UserId");
 CREATE INDEX "ix_refreshtokens_expiresat" ON public."RefreshTokens"("ExpiresAt");
@@ -159,6 +179,16 @@ CREATE INDEX "ix_refreshtokens_expiresat" ON public."RefreshTokens"("ExpiresAt")
 5. Убедитесь, что в схеме public появились таблицы Users и RefreshTokens.
 
 ![Окно схемы БД "TaskFlow"](Docs/Screenshots/Dbeaver-Schema-Tables.png)
+
+> 💡 **Почему таблица `Roles` вместо строковой колонки?**
+> Enum или строка для ролей — это антипаттерн в production. Таблица позволяет:
+>  * Добавлять новые роли без перекомпиляции приложения
+>  * Редактировать названия ролей через админку
+>  * Хранить описания ролей
+>  * В будущем легко расширить до системы прав (`RolePermissions`)
+
+4. После выполнения нажмите кнопку **Refresh (F5)** в навигаторе баз данных.
+5. Убедитесь, что в схеме `public` появились таблицы `Roles`, `Users` и `RefreshTokens`.
 
 ---
 
@@ -173,26 +203,27 @@ CREATE INDEX "ix_refreshtokens_expiresat" ON public."RefreshTokens"("ExpiresAt")
 -- Создаем тестового пользователя admin
 -- Пароль: Admin123 
 -- Формат хеша: итерации:base64_соль:base64_хеш (PBKDF2-HMAC-SHA256, 100k итераций)
-INSERT INTO public."Users" ("Username", "Email", "PasswordHash", "Role")
+INSERT INTO public."Users" ("Username", "Email", "PasswordHash", "RoleId", "MustChangePassword")
 VALUES (
     'admin',
     'admin@taskflow.local',
     '100000:NDQyY34PFV8T9l5WOcItfQ==:POxpZySDaIgiYHCy8qtVUZnUZeEFAT26H3VWtkJpwYU=',
-    'Admin'
+    1,
+    false
 );
 
 -- Проверяем результат
-SELECT "Id", "Username", "Email", "Role", "CreatedAt" 
-FROM public."Users" 
-WHERE "Username" = 'admin';
+SELECT u."Id", u."Username", u."Email", r."Name" AS "RoleName", u."MustChangePassword"
+FROM public."Users" u
+JOIN public."Roles" r ON u."RoleId" = r."Id"
+WHERE u."Username" = 'admin';
 ```
 ![Окно схемы БД "TaskFlow"](Docs/Screenshots/Dbeaver-Admin-Created.png)
 
-> 💡 **Почему такой формат хеша?**
-> 
-> * Мы не используем сторонние пакеты (как BCrypt), а берем встроенный в .NET `Rfc2898DeriveBytes` (PBKDF2).
-> * Формат `100000:salt:hash` позволяет нам хранить все необходимые параметры для проверки пароля в одной строке БД.
-> * Позже мы напишем класс `PasswordHasher` в слое Infrastructure, который будет генерировать и проверять такие строки.
+> 💡 Почему такой формат хеша?
+> Мы не используем сторонние пакеты (как BCrypt), а берем встроенный в .NET `Rfc2898DeriveBytes` (PBKDF2).
+> Формат `100000:salt:hash` позволяет нам хранить все необходимые параметры для проверки пароля в одной строке БД.
+> Позже мы напишем класс `PasswordHasher` в слое Infrastructure, который будет генерировать и проверять такие строки.
 
 ---
 
@@ -200,13 +231,12 @@ WHERE "Username" = 'admin';
 
 После настройки БД мы создаем структуру решения в Visual Studio, используя **.NET 11 Preview**. 
 
-### 1. Создание проектов
-В решении `TaskFlow` создаются 4 проекта типа **Class Library** (кроме **WebAPI**):
-![Окно создания Class Library](Docs/Screenshots/csharp_class_library_project.png)
-1. `TaskFlow.Domain` (Ядро, без зависимостей)
-2. `TaskFlow.Application` (Бизнес-логика и интерфейсы)
-3. `TaskFlow.Infrastructure` (Реализация интерфейсов, работа с БД)
-4. `TaskFlow.WebAPI` (Точка входа, контроллеры, настройки)
+1. **Создание проектов**
+   В решении `TaskFlow` создаются 4 проекта типа **Class Library** (кроме **WebAPI**):
+   * `TaskFlow.Domain` (Ядро, без зависимостей)
+   * `TaskFlow.Application` (Бизнес-логика и интерфейсы)
+   * `TaskFlow.Infrastructure` (Реализация интерфейсов, работа с БД)
+   * `TaskFlow.WebAPI` (Точка входа, контроллеры, настройки)
 ![Окно создания Web.API](Docs/Screenshots/csharp_web_api_project.png)
 
 > ⚠️ **Важно:** При создании всех проектов необходимо явно выбрать одну и ту же целевую платформу (например, `.NET 11.0 Preview`), чтобы избежать конфликтов версий при сборке.
@@ -214,17 +244,17 @@ WHERE "Username" = 'admin';
 
 ![Окно создания выбора версии .net](Docs/Screenshots/csharp_class_library_version.png)
 
-### 2. Очистка от шаблонов
-Сразу после создания удаляем мусор, сгенерированный Visual Studio:
-* В `TaskFlow.WebAPI`: удалить `WeatherForecast.cs` и `WeatherForecastController.cs`.
-* В `Domain`, `Application`, `Infrastructure`: удалить `Class1.cs`.
+2. **Очистка от шаблонов**
+   Сразу после создания удаляем мусор, сгенерированный Visual Studio:
+   * В `TaskFlow.WebAPI`: удалить `WeatherForecast.cs` и `WeatherForecastController.cs`.
+   * В `Domain`, `Application`, `Infrastructure`: удалить `Class1.cs`.
 
-### 3. Настройка зависимостей (Правило направленных внутрь связей)
-Ссылки между проектами добавляются строго в одном направлении:
-* `Application` ➔ ссылается на `Domain`
-* `Infrastructure` ➔ ссылается на `Domain` и `Application`
-* `WebAPI` ➔ ссылается на `Application` и `Infrastructure`
-* `Domain` ➔ **ни на что не ссылается** (абсолютно независим)
+3. **Настройка зависимостей (Правило направленных внутрь связей)**
+   Ссылки между проектами добавляются строго в одном направлении:
+   * `Application` ➔ ссылается на `Domain`
+   * `Infrastructure` ➔ ссылается на `Domain` и `Application`
+   * `WebAPI` ➔ ссылается на `Application` и `Infrastructure`
+   * `Domain` ➔ **ни на что не ссылается** (абсолютно независим)
 
 После этих действий решение должно успешно собираться (`Build: 4 succeeded, 0 failed`), несмотря на использование Preview-версии .NET.
 
@@ -247,12 +277,13 @@ Install-Package Microsoft.EntityFrameworkCore.Design
 ```powershell
 Install-Package Microsoft.EntityFrameworkCore.Tools
 ```
->💡 **Почему именно такое распределение?**
+
+> 💡 Почему именно такое распределение?
 > * **Infrastructure**: Здесь будет жить `DbContext` и провайдер базы данных (`Npgsql`). Это слой, отвечающий за внешние зависимости.
 > * **WebAPI**: Пакет `Tools` нужен для запуска команд генерации кода (Scaffold) из консоли, поэтому он должен быть установлен в стартовом (запускаемом) проекте.
 > * **Domain и Application**: Остаются абсолютно чистыми! Мы не тянем зависимости от EF Core в ядро проекта.
 
-4.  После установки нажмите **Сборка** → **Пересобрать решение** (Rebuild Solution), чтобы убедиться, что все пакеты корректно интегрировались и конфликтов версий нет (`Build: 4 succeeded, 0 failed`).
+4. Нажмите **Сборка → Пересобрать решение** (Rebuild Solution), чтобы убедиться, что все пакеты корректно интегрировались и конфликтов версий нет (`Build: 4 succeeded, 0 failed`).
 
 ---
 
@@ -269,7 +300,7 @@ Install-Package Microsoft.EntityFrameworkCore.Tools
 Теперь, когда пакеты установлены, мы используем Entity Framework Core для автоматической генерации C#-классов на основе нашей схемы PostgreSQL.
 
 1. Откройте **Консоль диспетчера пакетов** (Средства → Диспетчер пакетов NuGet → Консоль диспетчера пакетов).
-2. В выпадающем списке **Проект по умолчанию** выберите **TaskFlow.Infrastructure**.
+2. В списке **Проект по умолчанию** выберите **TaskFlow.Infrastructure**.
 3. Выполните следующую команду:
 
 ```powershell
@@ -277,39 +308,42 @@ Scaffold-DbContext "Host=localhost;Port=5433;Database=TaskFlow;Username=postgres
 ```
 
 **Разбор параметров команды:**
-> -   `Host=...` — строка подключения к нашему Docker-контейнеру.
-> -   `-OutputDir Entities` — указывает папку для генерации сущностей.
-> -   `-Context AppDbContext` — задает имя для главного класса контекста базы данных.
-> -   `-Project TaskFlow.Infrastructure` — проект, куда будут добавлены файлы.
-> -   `-StartupProject TaskFlow.WebAPI` — проект запуска (нужен EF Core для чтения конфигураций).
-> -   `-Force` — разрешает перезапись файлов при повторном запуске.
+* `Host=...` — строка подключения к нашему Docker-контейнеру.
+* `-OutputDir Entities` — указывает папку для генерации сущностей.
+* `-Context AppDbContext` — задает имя для главного класса контекста базы данных.
+* `-Project TaskFlow.Infrastructure` — проект, куда будут добавлены файлы.
+* `-StartupProject TaskFlow.WebAPI` — проект запуска (нужен EF Core для чтения конфигураций).
+* `-Force` — разрешает перезапись файлов при повторном запуске.
 
-4.  После выполнения в проекте **TaskFlow.Infrastructure** появится папка `Entities` с файлами:
-    -   `AppDbContext.cs`
-    -   `User.cs`
-    -   `RefreshToken.cs`
+После выполнения в проекте `TaskFlow.Infrastructure` появится папка `Entities` с файлами:
+* `AppDbContext.cs`
+* `User.cs`
+* `RefreshToken.cs`
+* `Role.cs`
 
-> ⚠️ **Важное примечание по Clean Architecture:** По умолчанию EF Core генерирует всё в указанный проект. Однако по правилам Clean Architecture, сущности (**`User`**, **`RefreshToken`**) должны находиться в слое **`Domain`**, а **`AppDbContext`** — в **`Infrastructure`**. На следующем шаге мы проведем рефакторинг и разнесем эти файлы по правильным слоям.
+> ⚠️ **Важное примечание по Clean Architecture:** По умолчанию EF Core генерирует всё в указанный проект. Однако по правилам Clean Architecture, сущности (`User`, `RefreshToken`, `Role`) должны находиться в слое `Domain`, а `AppDbContext` — в `Infrastructure`. На следующем шаге мы проведем рефакторинг и разнесем эти файлы по правильным слоям.
 
 ---
 
 ## 🏗️ Шаг 9: Рефакторинг сгенерированного кода и настройка подключения к БД
 
-По умолчанию EF Core генерирует весь код в один проект. Чтобы соблюсти правила **Clean Architecture**, мы разнесем сущности и контекст по правильным слоям, а строку подключения вынесем в конфигурацию.
+По умолчанию EF Core генерирует весь код в один проект. Чтобы соблюсти правила Clean Architecture, мы разнесем сущности и контекст по правильным слоям, а строку подключения вынесем в конфигурацию.
 
 ### 1. Распределение файлов по слоям
-1. В проекте **TaskFlow.Domain** создайте папку `Entities` и переместите туда файлы `User.cs` и `RefreshToken.cs`.
-2. В проекте **TaskFlow.Infrastructure** создайте папку `Context` и переместите туда файл `AppDbContext.cs`. Старую папку `Entities` в Infrastructure можно удалить.
-3. Исправьте пространства имен (`namespace`) в перемещенных файлах:
-   * В `User.cs` и `RefreshToken.cs`: `namespace TaskFlow.Domain.Entities;`
+
+* В проекте `TaskFlow.Domain` создайте папку `Entities` и переместите туда файлы `User.cs`, `RefreshToken.cs` и `Role.cs`.
+* В проекте `TaskFlow.Infrastructure` создайте папку `Context` и переместите туда файл `AppDbContext.cs`. Старую папку `Entities` в Infrastructure можно удалить.
+* Исправьте пространства имен (`namespace`) в перемещенных файлах:
+  * В `User.cs`, `RefreshToken.cs` и `Role.cs`: `namespace TaskFlow.Domain.Entities;`
    * В `AppDbContext.cs`: `namespace TaskFlow.Infrastructure.Context;`
-4. Добавьте `using TaskFlow.Domain.Entities;` в начало файла `AppDbContext.cs`, чтобы он увидел сущности из другого проекта.
+* Добавьте `using TaskFlow.Domain.Entities;` в начало файла `AppDbContext.cs`, чтобы он увидел сущности из другого проекта.
 
 ### 2. Вынос строки подключения (Dependency Injection)
+
 Хардкодить строку подключения внутри `AppDbContext` — это антипаттерн. Мы вынесем её во внешний слой (`WebAPI`).
 
-1. Откройте `AppDbContext.cs` и **полностью удалите** сгенерированный метод `OnConfiguring`.
-2. Откройте `appsettings.json` в проекте **TaskFlow.WebAPI** и добавьте секцию `ConnectionStrings`:
+* Откройте `AppDbContext.cs` и полностью удалите сгенерированный метод `OnConfiguring`.
+* Откройте `appsettings.json` в проекте `TaskFlow.WebAPI` и добавьте секцию `ConnectionStrings`:
 
 ```json
 {
@@ -330,6 +364,7 @@ Scaffold-DbContext "Host=localhost;Port=5433;Database=TaskFlow;Username=postgres
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Infrastructure.Context;
 ```
+
 ### 4.  Зарегистрируйте `AppDbContext` в контейнере зависимостей (перед строкой `var app = builder.Build();`):
 
 ```csharp
@@ -338,11 +373,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 ```
 
->💡 **Почему именно так?**
->
->-   **Слабая связанность**: Слой `Infrastructure` больше ничего не знает о строке подключения или файлах конфигурации. Он просто получает готовый `DbContext` через конструктор.
->-   **Безопасность**: Строка подключения хранится в `appsettings.json` (который, кстати, часто добавляют в `.gitignore` для production-версий, оставляя только безопасные шаблоны).
->-   **Гибкость**: При необходимости вы сможете легко подменить реализацию БД или использовать разные строки для тестов и продакшена.
+> 💡 Почему именно так?
+> * **Слабая связанность**: Слой `Infrastructure` больше ничего не знает о строке подключения или файлах конфигурации. Он просто получает готовый `DbContext` через конструктор.
+> * **Безопасность**: Строка подключения хранится в `appsettings.json` (который, кстати, часто добавляют в `.gitignore` для production-версий, оставляя только безопасные шаблоны).
+> * **Гибкость**: При необходимости вы сможете легко подменить реализацию БД или использовать разные строки для тестов и продакшена.
 
 ---
 
@@ -355,17 +389,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 > docker start taskflow-db
 > ```
 > Без работающего контейнера приложение не сможет подключиться к базе данных и выдаст ошибку при попытке аутентификации.
+
 Финальный этап: создаем точку входа (API) для аутентификации и проверяем выдачу токена.
 
 ### 1. Создание контроллера
-> 💡 В версии `.NET 11.0.0-preview.7.26381.103` нет возможности добавить контроллер как в предыдущих версиях через `Add => Controller`. При попытке добавить контроллер таким образом, вы увидите сообщение `Scaffolding is not supported for .NET 11 or later projects.` 
-По этому добавление контроллера производится через локальное меню в `Solution Explorer` (Правой кнопкой мыши вызовите локальное меню папки `Controllers` выберите пункт `Add` далее `New Item`
 
-![Добавление пустого контроллера:](Docs/Screenshots/csharp_add_authcontroller.png)
-
-В открывшемся списке найдите `API Controller - Empty` и измените имя контроллера на: `AuthController.cs`
-
-![Создание пустого контроллера:](Docs/Screenshots/csharp_authcontroller.png)
+> 💡 В версии `.NET 11.0.0-preview.7.26381.103` нет возможности добавить контроллер как в предыдущих версиях через `Add => Controller`. При попытке добавить контроллер таким образом, вы увидите сообщение `Scaffolding is not supported for .NET 11 or later projects.`
+> По этому добавление контроллера производится через локальное меню в `Solution Explorer` (Правой кнопкой мыши вызовите локальное меню папки `Controllers` выберите пункт `Add` далее `New Item`)
+> В открывшемся списке найдите `API Controller - Empty` и измените имя контроллера на: `AuthController.cs`
 
 После создание вставьте данный код:
 
@@ -386,56 +417,60 @@ public class AuthController(IAuthService authService) : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var response = await _authService.LoginAsync(request);
-
         if (response is null)
         {
             return Unauthorized(new { message = "Неверное имя пользователя или пароль" });
         }
-
         return Ok(response);
     }
 }
 ```
->⚠️ **Критически важно:** Убедитесь, что подключен именно ваш `using TaskFlow.Application.Contracts.Authentication;`. Visual Studio по ошибке может предложить `using Microsoft.AspNetCore.Identity.Data;`, что приведет к конфликту типов `LoginRequest` и ошибкам компиляции.
+
+> ⚠️ **Критически важно:** Убедитесь, что подключен именно ваш `using TaskFlow.Application.Contracts.Authentication;`. Visual Studio по ошибке может предложить `using Microsoft.AspNetCore.Identity.Data;`, что приведет к конфликту типов `LoginRequest` и ошибкам компиляции.
 
 ### 2. Тестирование API (рекомендуется Bruno)
 
-Для тестирования мы используем **Bruno** (или Postman/Insomnia), так как он легче и надежнее встроенного Swagger в .NET Preview-версиях.
+Для тестирования мы используем Bruno (или Postman/Insomnia), так как он легче и надежнее встроенного Swagger в .NET Preview-версиях.
 
-1.  Запустите проект **TaskFlow.WebAPI** (F5).
+1. Запустите проект `TaskFlow.WebAPI` (F5).
 2.  Откройте Bruno и создайте новый запрос:
-    -   **Метод:**  `POST`
-    -   **URL:**  `https://localhost:7053/api/Auth/login`  _(порт может отличаться, проверьте в свойствах проекта)_
-    -   **Body:**  `application/json`
+   * Метод: `POST`
+   * URL: `https://localhost:7053/api/Auth/login` (порт может отличаться, проверьте в свойствах проекта)
+   * Body: `application/json`
 
-#### ✅ Тест 1: Успешная аутентификация
+**✅ Тест 1: Успешная аутентификация**
 
-**Request Body:**
+Request Body:
 ```json
 {
   "username": "admin",
   "password": "Admin123"
 }
 ```
-**Expected Response (200 OK):**
+
+Expected Response (200 OK):
 ```json
 {
   "id": 1,
   "username": "admin",
   "email": "admin@taskflow.local",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "...",
+  "mustChangePassword": false
 }
 ```
-#### ❌ Тест 2: Неверный логин или пароль
 
-**Request Body:**
+**❌ Тест 2: Неверный логин или пароль**
+
+Request Body:
 ```json
 {
   "username": "admi",
   "password": "Admin123"
 }
 ```
-**Expected Response (401 Unauthorized):**
+
+Expected Response (401 Unauthorized):
 ```json
 {
   "message": "Неверное имя пользователя или пароль"
@@ -444,8 +479,8 @@ public class AuthController(IAuthService authService) : ControllerBase
 
 > 💡 **Итог:** Мы получили полностью рабочий, архитектурно правильный скелет Clean Architecture с JWT-аутентификацией. Слой `Domain` абсолютно чист, `Infrastructure` инкапсулирует логику БД и хеширования, а `WebAPI` управляет маршрутизацией и внедрением зависимостей (DI).
 
-
 ### 3. Альтернатива: Тестирование через .http-файл в Visual Studio
+
 Если у вас нет возможности использовать Bruno (или вы предпочитаете не выходить из IDE), Visual Studio имеет встроенный REST-клиент для работы с файлами `.http` или `.rest`.
 
 **Преимущества:**
@@ -483,10 +518,10 @@ Content-Type: application/json
 ```
 
 > 💡 Как это работает:
-> `@TaskFlow.WebAPI_HostAddress` — это переменная, которую можно использовать во всех запросах (удобно менять порт в одном месте).
-> `###` — разделитель между запросами.
-> Рядом с каждым запросом появляется зеленая стрелочка ▶ — нажмите на неё, чтобы выполнить запрос.
-> Ответ появится в правой части окна Visual Studio.
+> * `@TaskFlow.WebAPI_HostAddress` — это переменная, которую можно использовать во всех запросах (удобно менять порт в одном месте).
+> * `###` — разделитель между запросами.
+> * Рядом с каждым запросом появляется зеленая стрелочка ▶ — нажмите на неё, чтобы выполнить запрос.
+> * Ответ появится в правой части окна Visual Studio.
 
 3.  Запустите проект (`F5`) и нажмите на зеленую стрелочку рядом с первым запросом.
 4.  Вы увидите ответ `200 OK` с JWT-токеном прямо в Visual Studio!
@@ -501,12 +536,13 @@ Content-Type: application/json
 
 Чтобы приложение не "падало" с непонятными ошибками и не спамило консоль, если база данных (Docker) выключена, мы добавили глобальный Middleware. Он перехватывает ошибку подключения, возвращает клиенту понятный JSON-ответ (статус `503 Service Unavailable`) и записывает полный стектрейс в лог-файл для разработчика.
 
-Мы используем **нативное логирование без сторонних библиотек** (вроде Serilog), разделяя логи на два типа для удобства:
+Мы используем нативное логирование без сторонних библиотек (вроде Serilog), разделяя логи на два типа для удобства:
 * `Logs/AppLog/` — чистая история жизни приложения (SQL-запросы, инфо, ворнинги).
 * `Logs/Errors/` — критические ошибки с полными стектрейсами и разделителями.
 
 ### 1. Настройка логирования в `appsettings.json`
-Откройте `appsettings.json` в проекте **TaskFlow.WebAPI** и обновите секции `Logging`, а также добавьте `LoggingConfig` с разделением папок:
+
+Откройте `appsettings.json` в проекте `TaskFlow.WebAPI` и обновите секции `Logging`, а также добавьте `LoggingConfig` с разделением папок:
 
 ```json
 {
@@ -536,10 +572,11 @@ Content-Type: application/json
 }
 ```
 
-> 💡 **Почему именно так?** Мы глушим спам от EF Core (`"None"`), так как сами обработаем ошибку подключения, и указываем **папки** для логов. Middleware будет автоматически создавать новый файл с текущей датой и временем (например, `taskflow-errors_2026-09-07_05-07-00.log`), что предотвращает разрастание одного огромного файла.
+> 💡 Почему именно так? Мы глушим спам от EF Core (`"None"`), так как сами обработаем ошибку подключения, и указываем папки для логов. Middleware будет автоматически создавать новый файл с текущей датой и временем (например, `taskflow-errors_2026-09-07_05-07-00.log`), что предотвращает разрастание одного огромного файла.
 
 ### 2. Создание нативного файлового логгера (`NativeFileLogger.cs`)
-В проекте **TaskFlow.WebAPI** создайте папку `Logging`, а в ней файл `NativeFileLogger.cs`. Это легкий, потокобезопасный логгер, который пишет в файл ровно то же, что вы видите в консоли, с пустыми строками для читаемости.
+
+В проекте `TaskFlow.WebAPI` создайте папку `Logging`, а в ней файл `NativeFileLogger.cs`. Это легкий, потокобезопасный логгер, который пишет в файл ровно то же, что вы видите в консоли, с пустыми строками для читаемости.
 
 ```csharp
 using Microsoft.Extensions.Logging;
@@ -551,7 +588,6 @@ namespace TaskFlow.WebAPI.Logging;
 public class NativeFileLoggerProvider : ILoggerProvider
 {
     private readonly string _filePath;
-
     public NativeFileLoggerProvider(string filePath) => _filePath = filePath;
     public ILogger CreateLogger(string categoryName) => new NativeFileLogger(_filePath, categoryName);
     public void Dispose() { }
@@ -609,7 +645,8 @@ public class NativeFileLogger : ILogger
 ```
 
 ### 3. Создание Middleware
-В проекте **TaskFlow.WebAPI** создайте папку `Middleware`, а в ней файл `ExceptionHandlingMiddleware.cs`:
+
+В проекте `TaskFlow.WebAPI` создайте папку `Middleware`, а в ней файл `ExceptionHandlingMiddleware.cs`:
 
 ```csharp
 using System.Data.Common;
@@ -619,6 +656,7 @@ using System.Net.Sockets;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Hosting;
+using TaskFlow.Application.Exceptions;
 
 namespace TaskFlow.WebAPI.Middleware;
 
@@ -636,6 +674,21 @@ public class ExceptionHandlingMiddleware(
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        // <-- НОВОЕ: Обработка бизнес-исключений (400 Bad Request)
+        if (exception is BusinessException businessEx)
+        {
+            logger.LogWarning("⚠️ Бизнес-ошибка: {Message}", businessEx.Message);
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new
+            {
+                title = "Ошибка валидации",
+                detail = businessEx.Message,
+                status = 400
+            }));
+            return;
+        }
+
         bool isDbConnectionError = exception is DbException ||
                                    exception is SocketException ||
                                    (exception is InvalidOperationException && exception.InnerException is SocketException) ||
@@ -647,28 +700,27 @@ public class ExceptionHandlingMiddleware(
         if (isDbConnectionError)
         {
             logger.LogWarning("⚠️ Ошибка подключения к БД: {Message}. Возможно, не запущен Docker-контейнер.", exception.Message);
-
             try
             {
                 // 1. Берем папку для ошибок из конфига (по умолчанию "Logs/Errors")
                 var errorLogDirectory = configuration["LoggingConfig:ErrorLogDirectory"] ?? "Logs/Errors";
-                
+
                 // 2. Формируем имя файла с датой и временем: taskflow-errors_2026-09-07_05-07-00.log
                 // Формат yyyy-MM-dd_HH-mm-ss обеспечивает хронологическую сортировку в проводнике
                 var fileName = $"taskflow-errors_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log";
                 var logFullPath = Path.Combine(env.ContentRootPath, errorLogDirectory, fileName);
-                
+
                 // 3. Создаем папку, если её нет
                 var logDir = Path.GetDirectoryName(logFullPath);
                 if (!string.IsNullOrEmpty(logDir))
                 {
                     Directory.CreateDirectory(logDir);
                 }
-                
+
                 // 4. Формируем читаемую запись с длинным разделителем (80 символов)
                 var separator = new string('-', 80);
                 var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] DB Connection Error:\n{exception}\n{separator}\n\n";
-                
+
                 // 5. Дописываем в файл (на случай, если за одну секунду произойдет несколько ошибок)
                 File.AppendAllText(logFullPath, logEntry);
             }
@@ -701,14 +753,15 @@ public class ExceptionHandlingMiddleware(
 }
 ```
 
-> 💡 **Почему такой формат имени файла?**
-> * `yyyy-MM-dd_HH-mm-ss` — обеспечивает **хронологическую сортировку** в проводнике Windows (файлы стоят ровно по порядку создания).
-> * Двоеточия `:` заменены на дефисы `-`, так как двоеточия **запрещены** в именах файлов Windows.
+> 💡 Почему такой формат имени файла?
+> * `yyyy-MM-dd_HH-mm-ss` — обеспечивает хронологическую сортировку в проводнике Windows (файлы стоят ровно по порядку создания).
+> * Двоеточия `:` заменены на дефисы `-`, так как двоеточия запрещены в именах файлов Windows.
 > * 24-часовой формат `HH` исключает путаницу между AM/PM.
 > * Имя начинается с `taskflow-errors_`, что упрощает поиск и фильтрацию логов.
 
 ### 4. Регистрация в `Program.cs`
-Откройте `Program.cs` в проекте **TaskFlow.WebAPI**.
+
+Откройте `Program.cs` в проекте `TaskFlow.WebAPI`.
 
 1. Добавьте `using` в начало файла:
 ```csharp
@@ -718,7 +771,7 @@ using TaskFlow.WebAPI.Logging; // <-- Добавлено для NativeFileLogger
 
 2. Добавьте строку `Console.OutputEncoding = System.Text.Encoding.UTF8;` в самое начало файла (чтобы эмодзи в консоли отображались корректно).
 
-3. Настройте нативное логирование **сразу после** `var builder = WebApplication.CreateBuilder(args);`:
+3. Настройте нативное логирование сразу после `var builder = WebApplication.CreateBuilder(args);`:
 
 ```csharp
 Console.OutputEncoding = System.Text.Encoding.UTF8; // Для корректного отображения эмодзи
@@ -739,7 +792,7 @@ builder.Services.AddControllers();
 // ... (остальная регистрация сервисов: DbContext, JWT и т.д.)
 ```
 
-4. Зарегистрируйте Middleware **сразу после** `var app = builder.Build();` (это критически важно, чтобы он перехватывал ошибки от всех последующих компонентов):
+4. Зарегистрируйте Middleware сразу после `var app = builder.Build();` (это критически важно, чтобы он перехватывал ошибки от всех последующих компонентов):
 
 ```csharp
 var app = builder.Build();
@@ -751,11 +804,11 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
 app.Run();
 ```
 
 ### 5. Результат
+
 В папке `Logs` теперь идеальная структура:
 * `Logs/AppLog/app-log_2026-09-07_05-06-30.log` — чистая история жизни приложения (SQL-запросы, инфо, ворнинги) с пустыми строками для читаемости.
 * `Logs/Errors/taskflow-errors_2026-09-07_05-07-00.log` — критические ошибки с полными стектрейсами и длинными разделителями.
@@ -763,20 +816,24 @@ app.Run();
 > 💡 **Итог:** Enterprise-уровень логирования и обработки ошибок, 0 сторонних NuGet-пакетов, полная читаемость и контроль.
 
 ### 6. Тестирование "Защиты от дурака"
+
 1. Остановите контейнер: `docker stop taskflow-db`
 2. Запустите проект (`Ctrl + F5`).
 3. Отправьте запрос на логин через `.http` файл или Bruno.
-4. **Ожидаемый результат:**
-   * В ответе вы получите чистый JSON со статусом `503`:
-     ```json
-     {
+
+**Ожидаемый результат:**
+
+В ответе вы получите чистый JSON со статусом `503`:
+```json
+{
        "title": "База данных недоступна",
        "detail": "Не удалось подключиться к PostgreSQL. Убедитесь, что Docker-контейнер 'taskflow-db' запущен (команда: docker ps).",
        "status": 503
-     }
-     ```
-   * В консоли будет только одна чистая строка с предупреждением `⚠️`.
-   * В папке `Logs/Errors/` появится файл `taskflow-errors_2026-09-07_HH-mm-ss.log` с полным стектрейсом для отладки.
+}
+```
+
+В консоли будет только одна чистая строка с предупреждением `⚠️`.
+В папке `Logs/Errors/` появится файл `taskflow-errors_2026-09-07_HH-mm-ss.log` с полным стектрейсом для отладки.
 
 ---
 
@@ -785,7 +842,8 @@ app.Run();
 Чтобы пользователю не приходилось вводить логин/пароль каждые 15 минут (когда истекает Access Token), мы реализуем механизм Refresh Token с ротацией. Также мы добавим эндпоинт `Logout` и автоматический отзыв старых токенов при входе для обеспечения "одной активной сессии на пользователя".
 
 ### 1. Создание DTO для Refresh Token
-В проекте **TaskFlow.Application** в папке `Contracts/Authentication` создайте файл `RefreshTokenRequest.cs`:
+
+В проекте `TaskFlow.Application` в папке `Contracts/Authentication` создайте файл `RefreshTokenRequest.cs`:
 
 ```csharp
 namespace TaskFlow.Application.Contracts.Authentication;
@@ -794,7 +852,9 @@ public record RefreshTokenRequest(string RefreshToken);
 ```
 
 ### 2. Обновление AuthResponse
-Откройте `AuthResponse.cs` и добавьте поле `RefreshToken`:
+
+Откройте `AuthResponse.cs` и добавьте поля `RefreshToken` и `MustChangePassword`:
+
 ```csharp
 namespace TaskFlow.Application.Contracts.Authentication;
 
@@ -803,12 +863,15 @@ public record AuthResponse(
     string Username, 
     string Email, 
     string Token,
-    string RefreshToken
+    string RefreshToken,
+    bool MustChangePassword
 );
 ```
 
 ### 3. Обновление интерфейса IAuthService
+
 Добавьте новые методы в `IAuthService.cs`:
+
 ```csharp
 using TaskFlow.Application.Contracts.Authentication;
 
@@ -819,18 +882,24 @@ public interface IAuthService
     Task<AuthResponse?> LoginAsync(LoginRequest request);
     Task<AuthResponse?> RefreshTokenAsync(RefreshTokenRequest request);
     Task LogoutAsync(int userId, string refreshToken);
+    Task<bool> CreateUserAsync(CreateUserRequest request);
+    Task ChangePasswordAsync(int userId, ChangePasswordRequest request);
 }
 ```
 
 ### 4. Реализация AuthService с ротацией и очисткой токенов
+
 Полностью замените содержимое `AuthService.cs` в проекте `TaskFlow.Infrastructure/Services`:
 
 ```csharp
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Contracts.Authentication;
+using TaskFlow.Application.Contracts.Users;
+using TaskFlow.Application.Exceptions;
 using TaskFlow.Application.Interfaces;
 using TaskFlow.Application.Settings;
+using TaskFlow.Application.Validators;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Infrastructure.Context;
 using Microsoft.Extensions.Options;
@@ -847,7 +916,10 @@ public class AuthService(
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+        var user = await _context.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Username == request.Username);
+
         if (user is null) return null;
 
         if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
@@ -861,13 +933,21 @@ public class AuthService(
 
         await _context.SaveChangesAsync();
 
-        return new AuthResponse(user.Id, user.Username, user.Email, accessToken, refreshToken);
+        return new AuthResponse(
+            user.Id, 
+            user.Username, 
+            user.Email, 
+            accessToken, 
+            refreshToken,
+            user.MustChangePassword
+        );
     }
 
     public async Task<AuthResponse?> RefreshTokenAsync(RefreshTokenRequest request)
     {
         var storedToken = await _context.RefreshTokens
             .Include(rt => rt.User)
+            .ThenInclude(u => u.Role)
             .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
 
         if (storedToken is null || storedToken.IsRevoked || storedToken.ExpiresAt < DateTime.UtcNow)
@@ -885,7 +965,8 @@ public class AuthService(
             storedToken.User.Username,
             storedToken.User.Email,
             newAccessToken,
-            newRefreshToken
+            newRefreshToken,
+            storedToken.User.MustChangePassword
         );
     }
 
@@ -893,6 +974,77 @@ public class AuthService(
     {
         // При выходе отзываем ВСЕ активные токены этого пользователя
         await RevokeAllUserTokensAsync(userId);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<bool> CreateUserAsync(CreateUserRequest request)
+    {
+        // 1. Валидация сложности пароля
+        PasswordValidator.Validate(request.Password);
+
+        // 2. Проверка уникальности с понятными ошибками
+        if (await _context.Users.AnyAsync(u => u.Username == request.Username))
+            throw new BusinessException("Пользователь с таким именем уже существует");
+
+        if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+            throw new BusinessException("Пользователь с таким email уже существует");
+
+        // 3. Ищем роль в БД по имени
+        var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name == request.Role);
+        if (role == null)
+            throw new BusinessException($"Роль '{request.Role}' не найдена в системе. Доступны: Admin, User");
+
+        // 4. Создаём сущность пользователя
+        var newUser = new User
+        {
+            Username = request.Username,
+            Email = request.Email,
+            PasswordHash = _passwordHasher.Hash(request.Password),
+            RoleId = role.Id,
+            MustChangePassword = true // Пароль считается временным
+        };
+
+        // 5. Сохраняем с дополнительной защитой от UNIQUE constraint
+        try
+        {
+            _context.Users.Add(newUser);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("23505") == true || ex.InnerException?.Message.Contains("unique") == true)
+        {
+            throw new BusinessException("Нарушение уникальности: имя пользователя или email уже заняты.");
+        }
+
+        return true;
+    }
+
+    public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request)
+    {
+        // 1. Базовая проверка совпадения
+        if (request.NewPassword != request.ConfirmPassword)
+            throw new BusinessException("Новый пароль и подтверждение не совпадают");
+
+        // 2. Проверяем сложность нового пароля
+        PasswordValidator.Validate(request.NewPassword);
+
+        // 3. Ищем пользователя
+        var user = await _context.Users.FindAsync(userId);
+        if (user is null)
+            throw new BusinessException("Пользователь не найден");
+
+        // 4. Проверяем старый пароль
+        if (!_passwordHasher.Verify(request.OldPassword, user.PasswordHash))
+            throw new BusinessException("Текущий пароль введен неверно");
+
+        // 5. Проверяем, что пароли разные
+        if (request.OldPassword == request.NewPassword)
+            throw new BusinessException("Новый пароль должен отличаться от старого");
+
+        // 6. Обновляем хеш и сбрасываем флаг обязательной смены
+        user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
+        user.MustChangePassword = false;
+        user.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
     }
 
@@ -914,6 +1066,7 @@ public class AuthService(
         var randomBytes = new byte[32];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
+
         var refreshToken = Convert.ToBase64String(randomBytes);
 
         var refreshTokenEntity = new RefreshToken
@@ -934,7 +1087,8 @@ public class AuthService(
 ```
 
 ### 5. Добавление эндпоинтов в AuthController
-Откройте `AuthController.cs` и добавьте методы `Refresh` и `Logout`:
+
+Откройте `AuthController.cs` и добавьте методы `Refresh`, `Logout` и `ChangePassword`:
 
 ```csharp
 [HttpPost("refresh")]
@@ -955,17 +1109,30 @@ public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request)
         return Unauthorized(new { message = "Не удалось определить пользователя" });
 
     await _authService.LogoutAsync(userId, request.RefreshToken);
-    return Ok(new { message = "Выход выполнен успешно" });
+    return Ok(new { message = "Выход выполнен успешно!" });
+}
+
+[Authorize]
+[HttpPost("change-password")]
+public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+{
+    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+    if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        return Unauthorized(new { message = "Не удалось определить пользователя" });
+
+    await _authService.ChangePasswordAsync(userId, request);
+    return Ok(new { message = "Пароль успешно изменен" });
 }
 ```
 
 ### 6. Тестирование
+
 1. Выполните запрос на `/api/Auth/login` и скопируйте значение `refreshToken`.
 2. Отправьте запрос на `/api/Auth/refresh` для обновления токена.
 3. Отправьте запрос на `/api/Auth/logout` для выхода.
 4. Проверьте в БД: все токены пользователя теперь имеют `IsRevoked = true`.
 
-> 💡 **Почему это безопасно?**
+> 💡 Почему это безопасно?
 > * Мы используем **Refresh Token Rotation**: при каждом обновлении старый Refresh Token помечается как `IsRevoked = true` и создается новый.
 > * При каждом `Login` и `Logout` все старые токены автоматически отзываются (принцип DRY).
 > * Refresh Token генерируется криптографически стойким методом (`RandomNumberGenerator`).
@@ -977,7 +1144,8 @@ public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request)
 Теперь, когда у нас есть токены, убедимся, что защищенные ресурсы действительно недоступны без них.
 
 ### 1. Создание тестового защищенного контроллера
-В проекте **TaskFlow.WebAPI** создайте `Controllers/TestController.cs`:
+
+В проекте `TaskFlow.WebAPI` создайте `Controllers/TestController.cs`:
 
 ```csharp
 using Microsoft.AspNetCore.Authorization;
@@ -999,6 +1167,7 @@ public class TestController : ControllerBase
 ```
 
 ### 2. Тестирование в `.http` файле
+
 Добавьте в ваш `TaskFlow.WebAPI.http` следующие запросы:
 
 ```http
@@ -1015,18 +1184,138 @@ Authorization: Bearer {{token}}
 
 ---
 
-## 👑 Шаг 14: Реализация ролей и управление пользователями
+## 👑 Шаг 14: Реализация ролей, валидации и управления пользователями
 
-Для полноценной многопользовательской системы нам нужны роли и возможность создавать новых пользователей через API. Мы реализуем метод `Hash` для генерации паролей и добавим `AdminController` с защитой по роли.
+Для полноценной многопользовательской системы нам нужна табличная модель ролей, строгая валидация паролей и возможность создавать новых пользователей через API.
 
 ### 1. Обновление сущности User
-Откройте `TaskFlow.Domain/Entities/User.cs` и добавьте свойство `Role`:
+
+Откройте `TaskFlow.Domain/Entities/User.cs`. Теперь вместо строковой роли у нас связь через `RoleId`:
 
 ```csharp
-public string Role { get; set; } = "User";
+using System.Collections.Generic;
+
+namespace TaskFlow.Domain.Entities;
+
+public partial class User
+{
+    public int Id { get; set; }
+    public string Username { get; set; } = null!;
+    public string Email { get; set; } = null!;
+    public string PasswordHash { get; set; } = null!;
+    
+    // Связь с таблицей Roles
+    public int RoleId { get; set; }
+    public virtual Role Role { get; set; } = null!;
+    
+    // Флаг обязательной смены временного пароля
+    public bool MustChangePassword { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+}
 ```
 
-### 2. Реализация метода Hash в PasswordHasher
+### 2. Создание сущности Role
+
+Создайте `TaskFlow.Domain/Entities/Role.cs`:
+
+```csharp
+using System.Collections.Generic;
+
+namespace TaskFlow.Domain.Entities;
+
+public partial class Role
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = null!;
+    public string? Description { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public virtual ICollection<User> Users { get; set; } = new List<User>();
+}
+```
+
+### 3. Обновление AppDbContext
+
+Откройте `TaskFlow.Infrastructure/Context/AppDbContext.cs` и настройте связи:
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using TaskFlow.Domain.Entities;
+
+namespace TaskFlow.Infrastructure.Context;
+
+public partial class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    public virtual DbSet<Role> Roles { get; set; }
+    public virtual DbSet<User> Users { get; set; }
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.ToTable("Roles");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.Property(e => e.Description).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("Users");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Username).HasMaxLength(50).IsRequired();
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.Property(e => e.Email).HasMaxLength(100).IsRequired();
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.Property(e => e.PasswordHash).HasMaxLength(255).IsRequired();
+
+            entity.HasOne(e => e.Role)
+                  .WithMany(r => r.Users)
+                  .HasForeignKey(e => e.RoleId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("RefreshTokens");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Token).HasMaxLength(255).IsRequired();
+            entity.HasIndex(e => e.Token).IsUnique();
+            entity.HasOne(e => e.User)
+                  .WithMany(u => u.RefreshTokens)
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        base.OnModelCreating(modelBuilder);
+    }
+}
+```
+
+### 4. Обновление JwtTokenGenerator
+
+Откройте `TaskFlow.Infrastructure/Services/JwtTokenGenerator.cs` и добавьте Claim с ролью из объекта `Role`:
+
+```csharp
+var claims = new[]
+{
+    new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+    new Claim(JwtRegisteredClaimNames.Email, user.Email),
+    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+    new Claim(ClaimTypes.Role, user.Role.Name) // <-- Берём Name из объекта Role
+};
+```
+
+### 5. Реализация метода Hash в PasswordHasher
+
 Откройте `TaskFlow.Infrastructure/Services/PasswordHasher.cs` и добавьте метод `Hash`:
 
 ```csharp
@@ -1051,21 +1340,54 @@ public string Hash(string password)
 }
 ```
 
-### 3. Добавление роли в JWT-токен
-Откройте `TaskFlow.Infrastructure/Services/JwtTokenGenerator.cs` и добавьте Claim с ролью:
+### 6. Создание BusinessException
+
+В проекте `TaskFlow.Application` создайте папку `Exceptions` и файл `BusinessException.cs`:
 
 ```csharp
-var claims = new[]
+namespace TaskFlow.Application.Exceptions;
+
+public class BusinessException : Exception
 {
-    new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-    new Claim(JwtRegisteredClaimNames.Email, user.Email),
-    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-    new Claim(ClaimTypes.Role, user.Role) // <-- ДОБАВЛЯЕМ РОЛЬ
-};
+    public BusinessException(string message) : base(message) { }
+    public BusinessException(string message, Exception innerException) : base(message, innerException) { }
+}
 ```
 
-### 4. Создание DTO для создания пользователя
-В проекте **TaskFlow.Application** создайте папку `Contracts/Users` и файл `CreateUserRequest.cs`:
+> 💡 **Зачем это нужно?** Мы используем `BusinessException` для возврата клиенту понятных ошибок валидации (например, "Email уже используется") со статусом `400 Bad Request`, вместо того чтобы "падать" с `500 Internal Server Error`.
+
+### 7. Создание PasswordValidator
+
+В проекте `TaskFlow.Application` создайте папку `Validators` и файл `PasswordValidator.cs`:
+
+```csharp
+using System.Text.RegularExpressions;
+using TaskFlow.Application.Exceptions;
+
+namespace TaskFlow.Application.Validators;
+
+public static class PasswordValidator
+{
+    public static void Validate(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            throw new BusinessException("Пароль не может быть пустым");
+
+        if (password.Length < 8)
+            throw new BusinessException("Пароль должен содержать минимум 8 символов");
+
+        if (!Regex.IsMatch(password, "[A-Z]"))
+            throw new BusinessException("Пароль должен содержать хотя бы одну заглавную букву (A-Z)");
+
+        if (!Regex.IsMatch(password, "[0-9]") && !Regex.IsMatch(password, "[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]"))
+            throw new BusinessException("Пароль должен содержать хотя бы одну цифру (0-9) или спецсимвол (!@#$%^&*)");
+    }
+}
+```
+
+### 8. Создание DTO для создания пользователя и смены пароля
+
+В проекте `TaskFlow.Application` создайте папку `Contracts/Users` и файл `CreateUserRequest.cs`:
 
 ```csharp
 namespace TaskFlow.Application.Contracts.Users;
@@ -1078,43 +1400,21 @@ public record CreateUserRequest(
 );
 ```
 
-### 5. Добавление метода CreateUserAsync в IAuthService
-Откройте `TaskFlow.Application/Interfaces/IAuthService.cs`:
+В папке `Contracts/Authentication` создайте файл `ChangePasswordRequest.cs`:
 
 ```csharp
-using TaskFlow.Application.Contracts.Users;
+namespace TaskFlow.Application.Contracts.Authentication;
 
-Task<bool> CreateUserAsync(CreateUserRequest request);
+public record ChangePasswordRequest(
+    string OldPassword,
+    string NewPassword,
+    string ConfirmPassword
+);
 ```
 
-### 6. Реализация CreateUserAsync в AuthService
-Добавьте в `AuthService.cs`:
+### 9. Создание AdminController
 
-```csharp
-public async Task<bool> CreateUserAsync(CreateUserRequest request)
-{
-    if (await _context.Users.AnyAsync(u => u.Username == request.Username || u.Email == request.Email))
-        return false;
-
-    var passwordHash = _passwordHasher.Hash(request.Password);
-
-    var newUser = new User
-    {
-        Username = request.Username,
-        Email = request.Email,
-        PasswordHash = passwordHash,
-        Role = request.Role
-    };
-
-    _context.Users.Add(newUser);
-    await _context.SaveChangesAsync();
-
-    return true;
-}
-```
-
-### 7. Создание AdminController
-В проекте **TaskFlow.WebAPI** создайте `Controllers/AdminController.cs`:
+В проекте `TaskFlow.WebAPI` создайте `Controllers/AdminController.cs`:
 
 ```csharp
 using Microsoft.AspNetCore.Authorization;
@@ -1135,15 +1435,13 @@ public class AdminController(IAuthService authService) : ControllerBase
     public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
     {
         var success = await _authService.CreateUserAsync(request);
-        if (!success)
-            return BadRequest(new { message = "Пользователь с таким именем или email уже существует" });
-
-        return Ok(new { message = $"Пользователь {request.Username} успешно создан с ролью {request.Role}" });
+        return Ok(new { message = $"Пользователь {request.Username} успешно создан с ролью {request.Role}. Требуется смена временного пароля." });
     }
 }
 ```
 
-### 8. Тестирование
+### 10. Тестирование
+
 Добавьте в `.http` файл:
 
 ```http
@@ -1161,7 +1459,7 @@ Authorization: Bearer {{token}}
 }
 ```
 
-> 💡 **Итог:** Теперь у нас есть полноценная система ролей и управления пользователями. Только администраторы могут создавать новых пользователей через защищённый эндпоинт.
+> 💡 **Итог:** Теперь у нас есть полноценная система ролей и управления пользователями. Только администраторы могут создавать новых пользователей через защищённый эндпоинт. Пароли валидируются по строгим правилам, а при первом входе пользователь обязан сменить временный пароль.
 
 ---
 
@@ -1170,6 +1468,7 @@ Authorization: Bearer {{token}}
 Вместо ручных SQL-скриптов мы реализовали прозрачные API-эндпоинты для управления устаревшими токенами. Это позволяет администратору видеть, **какие именно** токены будут удалены, перед выполнением операции.
 
 ### 1. Эндпоинты в `AdminController`
+
 Методы защищены атрибутом `[Authorize(Roles = "Admin")]` и поддерживают как глобальную очистку, так и фильтрацию по `UserId`:
 
 ```csharp
@@ -1195,3 +1494,24 @@ public async Task<IActionResult> DeleteExpiredTokens(int? userId = null)
     return Ok(new { deletedCount = deletedIds.Count, deletedIds, message });
 }
 ```
+> 💡 **Почему это лучше SQL-скрипта?**
+> * **Прозрачность**: Ответ содержит массив `expiredIds` / `deletedIds`, что даёт полный аудит действий.
+> * **Безопасность**: Доступ есть только у роли `Admin`.
+> * **Гибкость**: Легко интегрируется в любую админ-панель (React, Vue, Blazor).
+
+---
+
+## 🧪 Шаг 16: Полное тестирование через .http файл
+
+Используйте файл `TaskFlow.WebAPI.http` в корне проекта `WebAPI` для проверки всех сценариев:
+
+1. Логин админа.
+2. Создание пользователя админом (и проверка ошибки при дублировании).
+3. Логин нового пользователя (проверка `mustChangePassword: true`).
+4. Смена пароля (проверка валидации `PasswordValidator`).
+5. Повторный логин (проверка `mustChangePassword: false`).
+6. Refresh Token Rotation.
+7. Logout с отзывом всех токенов.
+8. Очистка просроченных токенов.
+
+> 💡 **Итог:** Мы получили полностью рабочий, архитектурно правильный скелет Clean Architecture с enterprise-уровнем безопасности, логирования и администрирования. Готовы к переходу к бизнес-логике (Phase 2: Project и Task).

@@ -1,11 +1,15 @@
 @TaskFlow.WebAPI_HostAddress = https://localhost:7053
 
+# Переменные для токенов (заполняются вручную после успешного логина)
+@adminToken = ВСТАВЬ_СЮДА_ТОКЕН_АДМИНА_ИЗ_ТЕСТА_1
+@userToken = ВСТАВЬ_СЮДА_ТОКЕН_НОВОГО_ПОЛЬЗОВАТЕЛЯ_ИЗ_ТЕСТА_2
+
 ### ============================================================================
-### АУТЕНТИФИКАЦИЯ И УПРАВЛЕНИЕ СЕССИЯМИ
+### 1. АУТЕНТИФИКАЦИЯ АДМИНИСТРАТОРА
 ### ============================================================================
 
-### Тест 1: Логин с корректными данными (Получаем Access и Refresh токены)
-# @name login
+### Тест 1: Логин админа (Получаем токен для админских действий)
+# @name loginAdmin
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
 Accept: application/json
 Content-Type: application/json
@@ -15,80 +19,151 @@ Content-Type: application/json
   "password": "Admin123"
 }
 
-### Тест 2: Неверный логин или пароль (Ожидаем 401 Unauthorized)
+### ============================================================================
+### 2. УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ (Только Admin)
+### ============================================================================
+
+### Тест 7: Создание нового пользователя (Админом)
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Admin/users
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "username": "testuser",
+  "email": "testuser@taskflow.local",
+  "password": "TempPass123!",
+  "role": "User"
+}
+
+### Тест 7.1: Отрицательный тест - Попытка создать пользователя с существующим email
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Admin/users
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "username": "testuser_duplicate",
+  "email": "testuser@taskflow.local",
+  "password": "TempPass123!",
+  "role": "User"
+}
+
+### ============================================================================
+### 3. АУТЕНТИФИКАЦИЯ ОБЫЧНОГО ПОЛЬЗОВАТЕЛЯ
+### ============================================================================
+
+### Тест 2: Логин нового пользователя (Проверяем флаг mustChangePassword)
+# @name loginUser
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
 Accept: application/json
 Content-Type: application/json
 
 {
-  "username": "admi",
-  "password": "Admin123"
+  "username": "testuser",
+  "password": "TempPass123!"
 }
 
-### Тест 3: Обновление токена (Refresh Token Rotation)
-# ⚠️ Внимание: замени refreshToken на актуальный из ответа Теста 1
+### ============================================================================
+### 4. СМЕНА ПАРОЛЯ (Только авторизованный пользователь)
+### ============================================================================
+
+### Тест 8: Успешная смена пароля пользователем
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/change-password
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "oldPassword": "TempPass123!",
+  "newPassword": "NewSecurePass456!",
+  "confirmPassword": "NewSecurePass456!"
+}
+
+### Тест 8.1: Отрицательный тест - Слишком простой пароль (Проверка PasswordValidator)
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/change-password
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "oldPassword": "TempPass123!",
+  "newPassword": "123",
+  "confirmPassword": "123"
+}
+
+### Тест 8.2: Отрицательный тест - Пароли не совпадают
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/change-password
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{userToken}}
+
+{
+  "oldPassword": "TempPass123!",
+  "newPassword": "NewSecurePass456!",
+  "confirmPassword": "WrongPassword!"
+}
+
+### Тест 3: Повторный логин после смены пароля (Проверяем, что mustChangePassword = false)
+POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/login
+Accept: application/json
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "NewSecurePass456!"
+}
+
+### ============================================================================
+### 5. УПРАВЛЕНИЕ СЕССИЯМИ (Refresh / Logout)
+### ============================================================================
+
+### Тест 4: Обновление токена (Refresh Token Rotation)
+# ⚠️ Внимание: замени refreshToken на актуальный из ответа Теста 2 или 3
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/refresh
 Accept: application/json
 Content-Type: application/json
 
 {
-  "refreshToken": "7VdtXYdhEOqxKCxKHdwuBTZ+D2ei8ARQlQDthY2B3jI="
+  "refreshToken": "ВСТАВЬ_СЮДА_АКТУАЛЬНЫЙ_REFRESH_TOKEN"
 }
 
-### Тест 6: Logout (отзыв всех активных токенов пользователя)
-# ⚠️ Внимание: замени refreshToken на актуальный из ответа Теста 1
+### Тест 5: Logout (отзыв всех активных токенов пользователя)
+# ⚠️ Внимание: замени refreshToken на актуальный
 POST {{TaskFlow.WebAPI_HostAddress}}/api/Auth/logout
 Accept: application/json
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{userToken}}
 
 {
-  "refreshToken": "Zsm6ULZ11DIdTK+iiKPZbp+pGT2rAmYrSRNu4QV1wrE="
+  "refreshToken": "ВСТАВЬ_СЮДА_АКТУАЛЬНЫЙ_REFRESH_TOKEN"
 }
 
-
 ### ============================================================================
-### ПРОВЕРКА ЗАЩИТЫ ЭНДПОИНТОВ ([Authorize])
+### 6. ПРОВЕРКА ЗАЩИТЫ ЭНДПОИНТОВ ([Authorize])
 ### ============================================================================
 
-### Тест 4: Попытка доступа к защищенному ресурсу БЕЗ токена (Ожидаем 401 Unauthorized)
+### Тест 6: Попытка доступа к защищенному ресурсу БЕЗ токена (Ожидаем 401 Unauthorized)
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
 
-### Тест 5: Доступ к защищенному ресурсу С токеном (Ожидаем 200 OK)
-# 💡 Совет: скопируй значение поля "token" из ответа Теста 1 и вставь его ниже
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkB0YXNrZmxvdy5sb2NhbCIsImp0aSI6IjM2YTA1MWE4LWZlMjMtNDBjOS1hM2E0LThkMGQ0NTZkNjM3MCIsImV4cCI6MTc4ODgyMzUxMywiaXNzIjoiVGFza0Zsb3dBUEkiLCJhdWQiOiJUYXNrRmxvd0NsaWVudCJ9.0p2qsZYRo9uoxidPcdqd1tqYTg1b18GJiPhlKFHSI5E
-
+### Тест 6.1: Доступ к защищенному ресурсу С токеном (Ожидаем 200 OK)
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Test/secure-data
-Authorization: Bearer {{token}}
-
+Authorization: Bearer {{adminToken}}
 
 ### ============================================================================
-### АДМИНИСТРИРОВАНИЕ (Только для роли Admin)
+### 7. АДМИНИСТРИРОВАНИЕ ТОКЕНОВ (Регрессионные тесты)
 ### ============================================================================
 
-### Тест 7: Создание нового пользователя (Только для Admin)
-POST {{TaskFlow.WebAPI_HostAddress}}/api/Admin/users
-Accept: application/json
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "username": "manager",
-  "email": "manager@taskflow.local",
-  "password": "Manager123",
-  "role": "User"
-}
- 
-### Тест 8: Просмотр просроченных токенов конкретного пользователя (Id = 1)
+### Тест 9: Просмотр просроченных токенов конкретного пользователя (Id = 1)
 # Возвращает count и массив expiredIds для полного аудита
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Admin/tokens/expired/1
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
-### Тест 9: Удаление просроченных токенов конкретного пользователя (Id = 1)
+### Тест 10: Удаление просроченных токенов конкретного пользователя (Id = 1)
 # Возвращает deletedCount и массив deletedIds (какие именно записи удалены)
 DELETE {{TaskFlow.WebAPI_HostAddress}}/api/Admin/tokens/expired/1
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}
 
-### Тест 10: Глобальная проверка всех просроченных токенов в системе (без фильтра по UserId)
+### Тест 11: Глобальная проверка всех просроченных токенов в системе (без фильтра по UserId)
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Admin/tokens/expired
-Authorization: Bearer {{token}}
+Authorization: Bearer {{adminToken}}

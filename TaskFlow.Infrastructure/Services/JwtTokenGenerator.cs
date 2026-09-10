@@ -15,15 +15,19 @@ public class JwtTokenGenerator(IOptions<JwtSettings> jwtOptions) : IJwtTokenGene
 
     public string GenerateToken(User user)
     {
+        // Проверяем, что навигационное свойство Role загружено
+        if (user.Role == null)
+        {
+            throw new InvalidOperationException("Role navigation property is not loaded. Use .Include(u => u.Role) when querying users.");
+        }
+
         // 1. Формируем Claims (полезную нагрузку токена)
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            
-            // ДОБАВЛЯЕМ РОЛЬ В ТОКЕН:
-            new Claim(ClaimTypes.Role, user.Role)
+            new Claim(ClaimTypes.Role, user.Role.Name) // Берём Name из объекта Role
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
