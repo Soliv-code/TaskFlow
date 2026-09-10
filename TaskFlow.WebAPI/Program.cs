@@ -46,6 +46,13 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 // * Генерируем токен
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Регистрация сервисов для работы с проектами и задачами:
+builder.Services.AddScoped<IProjectService, ProjectService>();       
+builder.Services.AddScoped<IProjectTaskService, ProjectTaskService>();
+
+
+
+
 // Получаем секретный ключ с гарантией, что он не null
 var secretKey = builder.Configuration["JwtSettings:SecretKey"]
     ?? throw new InvalidOperationException("JWT Secret Key is not configured in appsettings.json");

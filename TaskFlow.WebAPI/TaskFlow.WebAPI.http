@@ -167,3 +167,40 @@ Authorization: Bearer {{adminToken}}
 ### Тест 11: Глобальная проверка всех просроченных токенов в системе (без фильтра по UserId)
 GET {{TaskFlow.WebAPI_HostAddress}}/api/Admin/tokens/expired
 Authorization: Bearer {{adminToken}}
+
+### ============================================================================
+### 8. УПРАВЛЕНИЕ ЗАДАЧАМИ (ProjectTask)
+### ============================================================================
+
+### Тест 8.1: Получить все задачи (Admin видит всё)
+GET {{TaskFlow.WebAPI_HostAddress}}/api/ProjectTask
+Authorization: Bearer {{adminToken}}
+
+### Тест 8.2: Получить задачи с фильтрацией (только статус Pending = 1)
+GET {{TaskFlow.WebAPI_HostAddress}}/api/ProjectTask?statusId=1
+Authorization: Bearer {{adminToken}}
+
+### Тест 8.3: Создать новую задачу в проекте (Id = 1)
+POST {{TaskFlow.WebAPI_HostAddress}}/api/ProjectTask
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+{
+  "title": "Протестировать новый контроллер",
+  "description": "Проверить вертикальный срез разработки",
+  "projectId": 1,
+  "assigneeId": 1,
+  "statusId": 1,
+  "priorityId": 3,
+  "dueDate": "2026-09-30T12:00:00Z"
+}
+
+### Тест 8.4: Быстрая смена статуса задачи (PATCH)
+# ⚠️ Замени {id} на реальный ID созданной задачи из ответа Теста 8.3
+PATCH {{TaskFlow.WebAPI_HostAddress}}/api/ProjectTask/6/status
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+{
+  "newStatusId": 2
+}
