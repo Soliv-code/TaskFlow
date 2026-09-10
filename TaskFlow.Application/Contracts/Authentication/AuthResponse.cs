@@ -5,5 +5,6 @@ public record AuthResponse(
     string Username,
     string Email,
     string Token,
-    string RefreshToken
+    string RefreshToken,
+    bool MustChangePassword // Флаг для фронтенда
 );

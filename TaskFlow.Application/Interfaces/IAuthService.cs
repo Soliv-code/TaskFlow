@@ -12,4 +12,6 @@ public interface IAuthService
     Task<bool> CreateUserAsync(CreateUserRequest request);
     Task<List<int>> GetExpiredTokenIdsAsync(int? userId = null);
     Task<List<int>> DeleteExpiredTokensAsync(int? userId = null);
+
+    Task ChangePasswordAsync(int userId, ChangePasswordRequest request);
 }

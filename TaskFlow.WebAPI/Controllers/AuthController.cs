@@ -57,4 +57,20 @@ public class AuthController(IAuthService authService) : ControllerBase
         await _authService.LogoutAsync(userId, request.RefreshToken);
         return Ok(new { message = "Выход выполнен успешно!" });
     }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        // Достаём ID пользователя из JWT-токена
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        {
+            return Unauthorized(new { message = "Не удалось определить пользователя" });
+        }
+
+        await _authService.ChangePasswordAsync(userId, request);
+
+        return Ok(new { message = "Пароль успешно изменен" });
+    }
 }
