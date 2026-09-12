@@ -37,9 +37,8 @@ public class AuthController(IAuthService authService) : ControllerBase
         var response = await _authService.RefreshTokenAsync(request);
 
         if (response is null)
-        {
             return Unauthorized(new { message = "Недействительный или истекший refresh token" });
-        }
+
         return Ok(response);
     }
 
